@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Network Visualization</title>
+    
+    <!-- Cytoscape.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.21.0/cytoscape.min.js"></script>
+    
+    <style>
+        /* Basic Reset */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Author Section */
+        #author {
+            text-align: center;
+            margin: 10px 0;
+            font-size: 12px;
+            color: gray;
+        }
+
+        /* Controls Section */
+        #controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background-color: #f5f5f5;
+            border-bottom: 1px solid #ccc;
+        }
+
+        #controls input[type="text"] {
+            width: 300px;
+            padding: 5px;
+            font-size: 14px;
+        }
+
+        #controls button, #controls select {
+            padding: 5px 10px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        /* Content Layout */
+        #content {
+            display: flex;
+            flex: 1;
+            flex-direction: row;
+            padding: 10px;
+            overflow: hidden;
+        }
+
+        /* Cytoscape Container */
+        #cy {
+            flex: 2;
+            height: 100%;
+            border: 1px solid #ccc;
+        }
+
+        /* Info Box and Legend */
+        #info-box, #legend {
+            flex: 1;
+            height: 100%;
+            overflow-y: auto;
+            margin-left: 10px;
+            max-width: 250px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #fafafa;
+        }
+
+        #info-box h3, #legend h4 {
+            margin-bottom: 10px;
+        }
+
+        /* How To Guide */
+        #how-to-guide {
+            margin-top: 20px;
+        }
+
+        #how-to-guide ul {
+            list-style-type: disc;
+            padding-left: 20px;
+        }
+
+        /* Community Panel Styles */
+        #community-panel {
+            display: none;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-top: 10px;
+            background-color: #fff;
+        }
+
+        #community-panel h4 {
+            margin-bottom: 10px;
+        }
+
+        #community-checkboxes {
+            max-height: 200px;
+            overflow-y: auto;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+        }
+
+        /* Buttons Inside Community Panel */
+        #community-panel button {
+            margin-bottom: 10px;
+            padding: 5px 10px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        /* Hovered Node Style */
+        .hovered {
+            border-width: 1.5px;
+            border-color: black;
+            z-index: 10;
+        }
+
+        /* Highlighted Edge Style */
+        .highlighted-edge {
+            line-color: black !important;
+            width: 2px !important;
+        }
+
+        /* Community Highlighted Node Style */
+        .community-highlighted {
+            border-width: 1.5px;
+            border-color: #ff5722;
+            background-color: #fff3e0;
+        }
+
+        /* Community Highlighted Edge Style */
+        .community-edges-highlighted {
+            line-color: #ff5722 !important;
+            width: 3px !important;
+            curve-style: straight;
+        }
+
+        /* Hovered Label Style */
+        .hovered-label {
+            font-size: 16px !important;
+            font-weight: bold;
+        }
+
+        /* Node Label Styles */
+        .node-label {
+            text-wrap: wrap;
+            text-max-width: 100px;
+            font-size: 10px;
+            transition: font-size 0.2s ease;
+        }
+    </style>
+</head>
+<body>
+    <!-- Author Information -->
+    <div id="author">
+        Author: Ketika Garg - <a href="mailto:kgarg@caltech.edu">kgarg@caltech.edu</a>
+    </div>
+
+    <!-- Controls Section -->
+    <div id="controls">
+        <!-- Search Box -->
+        <input type="text" id="search-box" placeholder="Search node...">
+        <button onclick="searchNode()">Search</button>
+        <button onclick="resetHighlights()">Reset</button>
+        
+        <!-- Toggle Legend -->
+        <button id="toggle-legend" onclick="toggleLegend()">Hide Legend</button>
+        
+        <!-- Toggle Instructions -->
+        <button id="toggle-instructions" onclick="toggleInstructions()">Hide Instructions</button>
+        
+        <!-- Layout Dropdown -->
+        <label for="layout-dropdown">Change Layout:</label>
+        <select id="layout-dropdown" onchange="changeLayout()">
+            <option value="cose">Force-Directed (Cose)</option>
+            <option value="concentric">Concentric</option>
+            <!-- Add more layout options if needed -->
+        </select>
+        
+        <!-- Toggle Communities Panel -->
+        <button id="toggle-communities" onclick="toggleCommunityPanel()">Show Communities</button>
+    </div>
+    
+    <!-- Main Content Area -->
+    <div id="content">
+        <!-- Cytoscape Container -->
+        <div id="cy"></div>
+        
+        <!-- Info Box -->
+        <div id="info-box">
+            <h3>Node Information</h3>
+            <div id="node-details">Click or hover over a node to see details.</div>
+            
+            <!-- How To Guide -->
+            <div id="how-to-guide">
+                <h4>How To</h4>
+                <ul>
+                    <li><b>Give a minute for the network to settle into a stable configuration</b></li>
+                    <li>Zoom in and out by pinching, drag to move around in the space</li>
+                    <li><b>Search:</b> Enter a term in the search box to highlight matching nodes.</li>
+                    <li><b>Reset:</b> Click "Reset" to clear highlights and return to the stable configuration.</li>
+                    <li><b>Node Interaction:</b> Click or hover a node to view its details.</li>
+                    <li><b>Legend:</b> Communities and their associated topics (not perfect!).</li>
+                </ul>
+            </div>
+            
+            <!-- Community Panel -->
+            <div id="community-panel">
+                <h4>Select Communities:</h4>
+                <button onclick="selectAllCommunities()">Select All</button>
+                <button onclick="deselectAllCommunities()">Deselect All</button>
+                <div id="community-checkboxes">
+                    <!-- Checkboxes will be populated dynamically -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Legend -->
+        <div id="legend">
+            <h4>Legend</h4>
+            <!-- Legend content will be populated dynamically -->
+        </div>
+    </div>
+
+    <!-- JavaScript Section -->
+    <script>
+        // Global Variables
+        let communityColors = {}; // Holds community colors for the legend
+        let stablePositions = {}; // Store stable positions of nodes
+        let cy; // Cytoscape instance
+        let originalPositions = {}; // To store original positions for hover reset
+
+        // Load the network and legend data with error handling
+        Promise.all([
+            fetch('network_data.json')
+                .then(res => {
+                    if (!res.ok) throw new Error(`Failed to fetch network_data.json: ${res.statusText}`);
+                    return res.json();
+                }),
+            fetch('legend_data.json')
+                .then(res => {
+                    if (!res.ok) throw new Error(`Failed to fetch legend_data.json: ${res.statusText}`);
+                    return res.json();
+                })
+        ]).then(([graphData, legendData]) => {
+            // Initialize Cytoscape
+            cy = cytoscape({
+                container: document.getElementById('cy'),
+                elements: graphData,
+                style: [
+                    {
+                        selector: 'node',
+                        style: {
+                            'label': 'data(label)',
+                            'background-color': 'data(style.background-color)',
+                            'width': 40,
+                            'height': 40,
+                            'text-valign': 'center',
+                            'text-halign': 'center',
+                            'color': '#333',
+                            'font-size': '10px',
+                            'text-outline-color': '#fff',
+                            'text-outline-width': 2,
+                            'border-width': 0,
+                            'border-color': '#fff',
+                            'text-wrap': 'wrap',
+                            'text-max-width': 100,
+                            'transition-property': 'font-size',
+                            'transition-duration': '0.2s'
+                        }
+                    },
+                    {
+                        selector: 'edge',
+                        style: {
+                            'width': 'mapData(weight, 1, 10, 1, 5)',
+                            'line-color': '#bbb',
+                            'curve-style': 'bezier',
+                        }
+                    },
+                    {
+                        selector: ':selected',
+                        style: {
+                            'background-color': '#fcba03',
+                            'line-color': '#fcba03',
+                            'target-arrow-color': '#fcba03',
+                            'text-outline-color': '#fcba03',
+                        }
+                    },
+                    {
+                        selector: '.highlighted',
+                        style: {
+                            'border-width': 3,
+                            'border-color': 'black',
+                            'background-color': '#fcba03',
+                            'width': 50,
+                            'height': 50
+                        }
+                    },
+                    {
+                        selector: '.hovered',
+                        style: {
+                            'border-width': 10,
+                            'border-color': 'black',
+                            'z-index': 10
+                        }
+                    },
+                    {
+                        selector: '.highlighted-edge',
+                        style: {
+                            'line-color': 'black',
+                            'width': 4
+                        }
+                    },
+                    {
+                        selector: '.community-highlighted',
+                        style: {
+                            'border-width': 3,
+                            'border-color': '#ff5722',
+                            'background-color': '#fff3e0',
+                        }
+                    },
+                    {
+                        selector: '.community-edges-highlighted',
+                        style: {
+                            'line-color': '#ff5722',
+                            'width': 3,
+                            'curve-style': 'straight'
+                        }
+                    },
+                    {
+                        selector: '.hovered-label',
+                        style: {
+                            'font-size': '14px',
+                            'font-weight': 'bold'
+                        }
+                    }
+                ],
+                layout: { name: 'cose', animate: true }
+            });
+
+            // Save stable positions once the layout is done
+            cy.on('layoutstop', () => {
+                cy.nodes().forEach(node => {
+                    stablePositions[node.id()] = { ...node.position() };
+                });
+            });
+
+            // Initial layout run
+            cy.layout({
+                name: 'cose',
+                animate: true,
+                edgeLength: 200,
+                fit: true
+            }).run();
+
+            // Populate Legend
+            let legendContainer = document.getElementById('legend');
+            legendData.forEach(entry => {
+                communityColors[entry.community] = entry.color; // Store colors for later use
+                let div = document.createElement('div');
+                div.style.display = 'flex';
+                div.style.alignItems = 'center';
+                div.style.marginBottom = '10px';
+                div.innerHTML = `
+                    <div style="width: 20px; height: 20px; background-color: ${entry.color}; margin-right: 10px;"></div>
+                    <div>${entry.community}: ${entry.description}</div>
+                `;
+                legendContainer.appendChild(div);
+            });
+
+            // Populate Community Checkboxes
+            let communityCheckboxesContainer = document.getElementById('community-checkboxes');
+            legendData.forEach(entry => {
+                let checkboxDiv = document.createElement('div');
+                checkboxDiv.style.marginBottom = '5px';
+                checkboxDiv.innerHTML = `
+                    <input type="checkbox" id="community-${entry.community}" name="community" value="${entry.community}">
+                    <label for="community-${entry.community}">${entry.community}</label>
+                `;
+                communityCheckboxesContainer.appendChild(checkboxDiv);
+            });
+
+            // Add event listener to checkboxes
+            document.querySelectorAll('input[name="community"]').forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    toggleCommunitySubgraph(this.value, this.checked);
+                });
+            });
+
+            // **REMOVE or COMMENT OUT the following lines**
+            // Initially hide all community subgraphs to prevent clutter
+            // cy.nodes().forEach(node => {
+            //     node.hide();
+            // });
+            // cy.edges().forEach(edge => {
+            //     edge.hide();
+            // });
+
+            // Function to Display Node Details
+            function displayNodeDetails(node) {
+                let nodeDetails = `
+                    <div><strong>Label:</strong> ${node.data('label')}</div>
+                    <div><strong>Description:</strong> ${node.data('description')}</div>
+                    <div><strong>Community:</strong> ${node.data('community')}</div>
+                `;
+                document.getElementById('node-details').innerHTML = nodeDetails;
+            }
+
+            // Node Click Event to Display Details
+            cy.on('tap', 'node', function(evt) {
+                let node = evt.target;
+                displayNodeDetails(node);
+            });
+
+            // Search Functionality
+            window.searchNode = function() {
+                let query = document.getElementById('search-box').value.toLowerCase();
+                cy.elements().removeClass('highlighted');
+                if (query === "") return; // No action for empty search
+                let foundNodes = cy.nodes().filter(node => node.data('label').toLowerCase().includes(query));
+                if (foundNodes.length > 0) foundNodes.addClass('highlighted');
+            };
+
+            // Reset Highlights and Node Positions
+            window.resetHighlights = function() {
+                cy.elements().removeClass('highlighted');
+                cy.elements().removeClass('highlighted-edge');
+                cy.elements().removeClass('community-highlighted');
+                cy.elements().removeClass('community-edges-highlighted');
+                document.getElementById('search-box').value = ""; // Clear search box
+                document.getElementById('node-details').innerHTML = "Click or hover over a node to see details.";
+                cy.layout({ name: 'cose', animate: true, fit: true }).run(); // Reset to 'cose' layout
+            };
+
+            // Toggle Legend Visibility
+            window.toggleLegend = function() {
+                let legend = document.getElementById('legend');
+                let button = document.getElementById('toggle-legend');
+                if (legend.style.display === "none") {
+                    legend.style.display = "block";
+                    button.textContent = "Hide Legend";
+                } else {
+                    legend.style.display = "none";
+                    button.textContent = "Show Legend";
+                }
+            };
+
+            // Toggle Instructions Visibility
+            window.toggleInstructions = function() {
+                let instructions = document.getElementById('how-to-guide');
+                let button = document.getElementById('toggle-instructions');
+                if (instructions.style.display === "none") {
+                    instructions.style.display = "block";
+                    button.textContent = "Hide Instructions";
+                } else {
+                    instructions.style.display = "none";
+                    button.textContent = "Show Instructions";
+                }
+            };
+
+            // Change Layout Dynamically
+            window.changeLayout = function() {
+                let layoutType = document.getElementById('layout-dropdown').value;
+                cy.layout({
+                    name: layoutType,
+                    animate: true,
+                    fit: true
+                }).run();
+            };
+
+            // Hover Functionality
+            cy.on('mouseover', 'node', function(evt) {
+                let node = evt.target;
+
+                // Add 'hovered' and 'hovered-label' classes
+                node.addClass('hovered');
+                node.addClass('hovered-label');
+
+                // Display node details
+                displayNodeDetails(node);
+
+                // Highlight connected edges
+                let connectedEdges = node.connectedEdges();
+                connectedEdges.addClass('highlighted-edge');
+
+                // Get connected nodes (neighbors)
+                let connectedNodes = node.connectedNodes();
+
+                // Move connected nodes slightly away from the hovered node
+                connectedNodes.forEach(function(adjNode) {
+                    // Store original position if not already stored
+                    if (!originalPositions[adjNode.id()]) {
+                        originalPositions[adjNode.id()] = { ...adjNode.position() };
+                    }
+
+                    // Calculate direction vector from hovered node to adjacent node
+                    let dx = adjNode.position('x') - node.position('x');
+                    let dy = adjNode.position('y') - node.position('y');
+                    let distance = Math.sqrt(dx*dx + dy*dy);
+
+                    // Avoid division by zero
+                    if (distance === 0) distance = 1;
+
+                    // Normalize the direction vector
+                    let ux = dx / distance;
+                    let uy = dy / distance;
+
+                    // Define the amount to move (e.g., 20 pixels)
+                    let moveAmount = 20;
+
+                    // Update the position
+                    adjNode.position({
+                        x: adjNode.position('x') + ux * moveAmount,
+                        y: adjNode.position('y') + uy * moveAmount
+                    });
+                });
+
+                // Highlight nodes in the same community
+                let community = node.data('community');
+                let communityNodes = cy.nodes().filter(function(n) {
+                    return n.data('community') === community && n.id() !== node.id();
+                });
+                communityNodes.addClass('community-highlighted');
+
+                // Highlight edges within the same community
+                let communityEdges = cy.edges().filter(function(e) {
+                    let sourceCommunity = e.source().data('community');
+                    let targetCommunity = e.target().data('community');
+                    return sourceCommunity === community && targetCommunity === community;
+                });
+                communityEdges.addClass('community-edges-highlighted');
+            });
+
+            cy.on('mouseout', 'node', function(evt) {
+                let node = evt.target;
+
+                // Remove 'hovered' and 'hovered-label' classes
+                node.removeClass('hovered');
+                node.removeClass('hovered-label');
+
+                // Remove highlighted edges
+                let connectedEdges = node.connectedEdges();
+                connectedEdges.removeClass('highlighted-edge');
+
+                // Reset node details to default message
+                document.getElementById('node-details').innerHTML = "Click or hover over a node to see details.";
+
+                // Get connected nodes (neighbors)
+                let connectedNodes = node.connectedNodes();
+
+                // Reset positions of connected nodes
+                connectedNodes.forEach(function(adjNode) {
+                    if (originalPositions[adjNode.id()]) {
+                        adjNode.position(originalPositions[adjNode.id()]);
+                        delete originalPositions[adjNode.id()];
+                    }
+                });
+
+                // Remove community highlights
+                cy.nodes().removeClass('community-highlighted');
+                cy.edges().removeClass('community-edges-highlighted');
+            });
+        }).catch(error => {
+            console.error('Error loading data:', error);
+            alert('Failed to load network or legend data. Please check the console for more details.');
+        });
+
+        // Function to Toggle Community Panel Visibility
+        window.toggleCommunityPanel = function() {
+            let panel = document.getElementById('community-panel');
+            let button = document.getElementById('toggle-communities');
+            if (panel.style.display === "none" || panel.style.display === "") {
+                panel.style.display = "block";
+                button.textContent = "Hide Communities";
+            } else {
+                panel.style.display = "none";
+                button.textContent = "Show Communities";
+            }
+        };
+
+        // Function to Toggle a Specific Community Subgraph with Debugging
+        function toggleCommunitySubgraph(community, isVisible) {
+            console.log(`Toggling community: ${community}, Visible: ${isVisible}`);
+
+            if (isVisible) {
+                // Show nodes of the selected community
+                const nodesToShow = cy.nodes().filter(node => node.data('community') === community);
+                console.log(`Nodes to show (${community}):`, nodesToShow.map(n => n.id()));
+                nodesToShow.show();
+
+                // Show edges where both source and target nodes are in the selected community
+                const edgesToShow = cy.edges().filter(edge => {
+                    const sourceCommunity = edge.source().data('community');
+                    const targetCommunity = edge.target().data('community');
+                    return sourceCommunity === community && targetCommunity === community;
+                });
+                console.log(`Edges to show (${community}):`, edgesToShow.map(e => e.id()));
+                edgesToShow.show();
+            } else {
+                // Hide nodes of the selected community
+                const nodesToHide = cy.nodes().filter(node => node.data('community') === community);
+                console.log(`Nodes to hide (${community}):`, nodesToHide.map(n => n.id()));
+                nodesToHide.hide();
+
+                // Hide edges where both source and target nodes are in the selected community
+                const edgesToHide = cy.edges().filter(edge => {
+                    const sourceCommunity = edge.source().data('community');
+                    const targetCommunity = edge.target().data('community');
+                    return sourceCommunity === community && targetCommunity === community;
+                });
+                console.log(`Edges to hide (${community}):`, edgesToHide.map(e => e.id()));
+                edgesToHide.hide();
+            }
+        }
+
+        // Function to Select All Communities
+        window.selectAllCommunities = function() {
+            document.querySelectorAll('input[name="community"]').forEach(checkbox => {
+                if (!checkbox.checked) {
+                    checkbox.checked = true;
+                    toggleCommunitySubgraph(checkbox.value, true);
+                }
+            });
+        };
+
+        // Function to Deselect All Communities
+        window.deselectAllCommunities = function() {
+            document.querySelectorAll('input[name="community"]').forEach(checkbox => {
+                if (checkbox.checked) {
+                    checkbox.checked = false;
+                    toggleCommunitySubgraph(checkbox.value, false);
+                }
+            });
+        };
+    </script>
+</body>
+</html>
