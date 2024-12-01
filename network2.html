@@ -559,20 +559,40 @@
         }
 
         // Populate Community Dropdown
-        function populateCommunityDropdown() {
-            const dropdown = d3.select("#community-dropdown");
-            // First option is 'All'
-            dropdown.append("option")
-                .attr("value", "All")
-                .text("All");
-            // Add all communities
-            communities.forEach(community => {
-                console.log(`Adding community to dropdown: ${community}`); // Debugging
-                dropdown.append("option")
-                    .attr("value", community)
-                    .text(community);
-            });
-        }
+        // [Other code remains the same]
+
+// Populate Community Dropdown
+function populateCommunityDropdown() {
+    const dropdown = d3.select("#community-dropdown");
+    // First option is 'All'
+    dropdown.append("option")
+        .attr("value", "All")
+        .text("All");
+
+    // Determine if communities are numeric
+    const areCommunitiesNumeric = communities.every(c => !isNaN(c));
+
+    let sortedCommunities;
+
+    if (areCommunitiesNumeric) {
+        // Convert to numbers and sort numerically
+        sortedCommunities = communities.map(c => +c).sort((a, b) => a - b);
+    } else {
+        // Sort alphabetically
+        sortedCommunities = communities.slice().sort((a, b) => a.localeCompare(b));
+    }
+
+    // Add all communities to the dropdown
+    sortedCommunities.forEach(community => {
+        console.log(`Adding community to dropdown: ${community}`); // Debugging
+        dropdown.append("option")
+            .attr("value", community)
+            .text(community);
+    });
+}
+
+// [Rest of the code remains unchanged]
+
 
         // Track expanded communities
         const expandedCommunities = new Set();
