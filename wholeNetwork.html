@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Interactive Network Visualization with D3.js</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- D3.js Library -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <!-- Tippy.js for Tooltips -->
+    <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/dist/tippy.css" />
+    <script src="https://unpkg.com/@popperjs/core@2"></script>
+    <script src="https://unpkg.com/tippy.js@6"></script>
+    
+    <style>
+        /* Basic Reset */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Author Section */
+        #author {
+            text-align: center;
+            margin: 10px 0;
+            font-size: 12px;
+            color: gray;
+        }
+
+        /* Controls Section */
+        #controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background-color: #f5f5f5;
+            border-bottom: 1px solid #ccc;
+        }
+
+        #controls input[type="text"], #controls select {
+            padding: 5px;
+            font-size: 14px;
+        }
+
+        #controls button {
+            padding: 5px 10px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        /* Main Content Area */
+        #content {
+            display: flex;
+            flex: 1;
+            flex-direction: row;
+            padding: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* D3.js SVG Container */
+        #network {
+            flex: 2;
+            position: relative;
+            min-width: 500px;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+            border: 1px solid #ccc;
+        }
+
+        /* Info Box and Legend */
+        #info-box, #legend {
+            flex: 1;
+            height: 100%;
+            max-width: 250px;
+            overflow-y: auto;
+            margin-left: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #fafafa;
+        }
+
+        #info-box h3, #legend h4 {
+            margin-bottom: 10px;
+        }
+
+        /* How To Guide */
+        #how-to-guide {
+            margin-top: 20px;
+        }
+
+        #how-to-guide ul {
+            list-style-type: disc;
+            padding-left: 20px;
+        }
+
+        /* Community Panel Styles */
+        #community-panel {
+            display: none;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-top: 10px;
+            background-color: #fff;
+        }
+
+        #community-panel h4 {
+            margin-bottom: 10px;
+        }
+
+        #community-checkboxes {
+            max-height: 200px;
+            overflow-y: auto;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+        }
+
+        /* Buttons Inside Community Panel */
+        #community-panel button {
+            margin-bottom: 10px;
+            padding: 5px 10px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        /* Node Styles */
+        .node {
+            cursor: pointer;
+            transition: stroke-width 0.2s ease, stroke 0.2s ease, r 0.2s ease;
+        }
+
+        .node.highlighted circle {
+            stroke: black;
+            stroke-width: 3px;
+            fill: #fcba03;
+        }
+
+        .node.community-highlighted circle {
+            stroke: red;
+            stroke-width: 3px;
+            fill: #fff3e0;
+        }
+
+        /* Link Styles */
+        .link {
+            stroke: #666; /* Darker color for better visibility */
+            stroke-opacity: 0.9; /* Increased opacity */
+            stroke-width: 2px;
+            transition: stroke-width 0.2s ease, stroke 0.2s ease;
+        }
+
+        .link.intra {
+            /* Intra-community link color will be set via D3's 'stroke' attribute */
+        }
+
+        .link.highlighted-edge {
+            stroke: red;
+            stroke-width: 3px;
+        }
+
+        /* Tooltip Styles */
+        .tooltip {
+            position: absolute;
+            text-align: center;
+            padding: 5px;
+            font: 12px sans-serif;
+            background: lightsteelblue;
+            border: 0px;
+            border-radius: 8px;
+            pointer-events: none;
+        }
+
+        /* Label Styles */
+        .node-label {
+            pointer-events: none;
+            font-size: 10px;
+            fill: #333;
+            text-anchor: middle;
+            dominant-baseline: middle; /* Center vertically */
+            transition: font-size 0.2s ease;
+        }
+
+        /* Community Navigation Dropdown */
+        #community-dropdown {
+            padding: 5px;
+            font-size: 14px;
+        }
+
+        /* Responsive Design for Mobile Screens */
+        @media (max-width: 768px) {
+            #content {
+                flex-direction: column;
+            }
+
+            #network, #info-box, #legend {
+                max-width: none;
+                width: 100%;
+                margin-left: 0;
+                margin-top: 10px;
+            }
+
+            /* Adjust node sizes for smaller screens */
+            .node circle {
+                r: 10px;
+            }
+
+            .node-label {
+                font-size: 8px;
+            }
+
+            /* Adjust label font size when communities are toggled */
+            .node.community-highlighted circle {
+                r: 15px;
+            }
+
+            /* Note: Simulation forces are handled in JavaScript */
+        }
+    </style>
+</head>
+<body>
+    <!-- Author Information -->
+    <div id="author">
+        Author: Ketika Garg - <a href="mailto:kgarg@caltech.edu">kgarg@caltech.edu</a>
+    </div>
+
+    <!-- Controls Section -->
+    <div id="controls">
+        <!-- Search Box -->
+        <input type="text" id="search-box" placeholder="Search node...">
+        <button onclick="searchNode()">Search</button>
+        <button onclick="resetHighlights()">Reset</button>
+        
+        <!-- Toggle Legend -->
+        <button id="toggle-legend" onclick="toggleLegend()">Hide Legend</button>
+        
+        <!-- Toggle Instructions -->
+        <button id="toggle-instructions" onclick="toggleInstructions()">Hide Instructions</button>
+        
+        <!-- Layout Dropdown -->
+        <label for="layout-dropdown">Change Layout:</label>
+        <select id="layout-dropdown" onchange="changeLayout()">
+            <option value="force">Force-Directed</option>
+            <option value="hierarchical">Hierarchical</option>
+            <!-- Removed Circular Layout Option -->
+        </select>
+        
+        <!-- Community Navigation Dropdown -->
+        <label for="community-dropdown">Select Community:</label>
+        <select id="community-dropdown" onchange="selectCommunity()">
+            <option value="All">All</option>
+            <!-- Community options will be populated dynamically -->
+        </select>
+    </div>
+    
+    <!-- Main Content Area -->
+    <div id="content">
+        <!-- D3.js SVG Container -->
+        <div id="network">
+            <svg></svg>
+            <!-- Resizer -->
+            <div id="resizer"></div>
+        </div>
+        
+        <!-- Info Box -->
+        <div id="info-box">
+            <h3>Node Information</h3>
+            <div id="node-details">Click or hover over a node to see details.</div>
+            
+            <!-- How To Guide -->
+            <div id="how-to-guide">
+                <h4>How To</h4>
+                <ul>
+                    <li><b>Zoom:</b> Use mouse scroll or pinch gestures to zoom in and out.</li>
+                    <li><b>Pan:</b> Click and drag to move around the network.</li>
+                    <li><b>Search:</b> Enter a term in the search box to highlight matching nodes.</li>
+                    <li><b>Reset:</b> Click "Reset" to clear highlights and return to the initial view.</li>
+                    <li><b>Node Interaction:</b> Click or hover a node to view its details. Drag them around to re-adjust</li>
+                    <li><b>Legend:</b> Communities and their associated topics (not perfect!).</li>
+                    <li><b>Community Navigation:</b> Select a community to focus on the subgraph.</li>
+                </ul>
+            </div>
+            
+            <!-- Community Panel (Removed as per instructions) -->
+        </div>
+        
+        <!-- Legend -->
+        <div id="legend">
+            <h4>Legend</h4>
+            <!-- Legend content will be populated dynamically -->
+        </div>
+    </div>
+
+    <!-- JavaScript Section -->
+    <script>
+        // Global Variables
+        let communityColors = {}; // Holds community colors for the legend
+        let svg, width, height, simulation, linkGroup, nodeGroup, link, node, zoom;
+        let graphData, legendData;
+        let communityVisualizationEnabled = false; // Flag for community-by-community visualization
+        let communities = []; // Array of community names
+
+        // Initialize SVG and Simulation
+        function initializeSVG() {
+            svg = d3.select("svg");
+            width = window.innerWidth * 0.6;
+            height = window.innerHeight * 0.8;
+
+            // Define zoom behavior
+            zoom = d3.zoom()
+                .scaleExtent([0.1, 10])
+                .on("zoom", zoomed);
+
+            svg.call(zoom);
+
+            // Create a container for the network
+            const container = svg.append("g");
+
+            // Groups for links and nodes
+            linkGroup = container.append("g")
+                .attr("class", "links");
+
+            nodeGroup = container.append("g")
+                .attr("class", "nodes");
+
+            // Initialize simulation
+            simulation = d3.forceSimulation()
+                .force("link", d3.forceLink().id(d => d.id).distance(50))
+                .force("charge", d3.forceManyBody().strength(-20))
+                .force("center", d3.forceCenter(width / 2, height / 2))
+                .force("collision", d3.forceCollide().radius(25)); // Increased collision radius for larger nodes
+
+            // Initialize resizer
+            initializeResizer();
+        }
+
+        // Zoom handler
+        function zoomed(event) {
+            svg.select('g').attr("transform", event.transform);
+        }
+
+        // Resizer Initialization
+        function initializeResizer() {
+            const resizer = document.getElementById('resizer');
+            const network = document.getElementById('network');
+            const infoBox = document.getElementById('info-box');
+
+            let x = 0;
+            let y = 0;
+            let mouseDown = false;
+
+            resizer.addEventListener('mousedown', function(e) {
+                mouseDown = true;
+                x = e.clientX;
+                y = e.clientY;
+
+                document.body.style.cursor = 'ew-resize';
+                document.body.style.userSelect = 'none';
+            });
+
+            document.addEventListener('mousemove', function(e) {
+                if (!mouseDown) return;
+
+                const dx = e.clientX - x;
+                const dy = e.clientY - y;
+
+                const newWidth = network.offsetWidth + dx;
+                const newInfoBoxWidth = infoBox.offsetWidth - dx;
+
+                // Set minimum and maximum widths
+                if (newWidth < 300 || newInfoBoxWidth < 200) return;
+
+                network.style.flex = `0 0 ${newWidth}px`;
+                infoBox.style.flex = `0 0 ${newInfoBoxWidth}px`;
+
+                x = e.clientX;
+                y = e.clientY;
+            });
+
+            document.addEventListener('mouseup', function(e) {
+                mouseDown = false;
+                document.body.style.cursor = 'default';
+                document.body.style.userSelect = 'auto';
+            });
+        }
+
+        // Load Data and Initialize Visualization
+        Promise.all([
+            fetch('network_data_unfiltered.json').then(res => {
+                if (!res.ok) throw new Error(`Failed to fetch network_data.json: ${res.statusText}`);
+                return res.json();
+            }),
+            fetch('legend_data_unfiltered.json').then(res => {
+                if (!res.ok) throw new Error(`Failed to fetch legend_data.json: ${res.statusText}`);
+                return res.json();
+            })
+        ]).then(([network, legend]) => {
+            graphData = network;
+            legendData = legend;
+
+            console.log("Network Data:", graphData); // Debugging
+            console.log("Legend Data:", legendData); // Debugging
+
+            // Transform nodes and edges to extract 'data' properties
+            graphData.nodes = graphData.nodes.map(node => node.data);
+            graphData.edges = graphData.edges.map(edge => edge.data);
+
+            // Data Validation: Check all edges have valid source and target
+            const nodeIds = new Set(graphData.nodes.map(node => node.id));
+
+            const invalidEdges = graphData.edges.filter(edge => 
+                !nodeIds.has(edge.source) || !nodeIds.has(edge.target)
+            );
+
+            if (invalidEdges.length > 0) {
+                console.warn(`Found ${invalidEdges.length} edges with invalid source/target IDs:`);
+                console.table(invalidEdges);
+                
+                // Remove invalid edges to prevent errors
+                graphData.edges = graphData.edges.filter(edge => 
+                    nodeIds.has(edge.source) && nodeIds.has(edge.target)
+                );
+                
+                alert(`Warning: ${invalidEdges.length} edges reference invalid nodes and have been removed.`);
+            } else {
+                // console.log("All edges have valid source and target IDs.");
+            }
+
+            // Check all nodes have 'community' property
+            const nodesWithoutCommunity = graphData.nodes.filter(d => !d.hasOwnProperty('community'));
+            if (nodesWithoutCommunity.length > 0) {
+                console.warn(`Found ${nodesWithoutCommunity.length} nodes without 'community' property:`);
+                console.table(nodesWithoutCommunity);
+                alert(`Warning: ${nodesWithoutCommunity.length} nodes lack the 'community' property. Please update your data.`);
+            } else {
+                // console.log("All nodes have the 'community' property.");
+            }
+
+            // Check for duplicate node IDs
+            const nodeIdCounts = {};
+            graphData.nodes.forEach(node => {
+                nodeIdCounts[node.id] = (nodeIdCounts[node.id] || 0) + 1;
+            });
+            const duplicateNodeIds = Object.keys(nodeIdCounts).filter(id => nodeIdCounts[id] > 1);
+            if (duplicateNodeIds.length > 0) {
+                console.warn(`Found duplicate node IDs: ${duplicateNodeIds.join(', ')}`);
+                alert(`Warning: Duplicate node IDs found: ${duplicateNodeIds.join(', ')}. Please ensure all node IDs are unique.`);
+            } else {
+                // console.log("All node IDs are unique.");
+            }
+
+            // Check node ID types
+            const idTypes = new Set(graphData.nodes.map(node => typeof node.id));
+            console.log(`Node ID types: ${Array.from(idTypes).join(', ')}`);
+            if (idTypes.size > 1) {
+                console.warn("Node IDs have mixed types. Ensure all IDs are of the same type.");
+                alert("Warning: Node IDs have mixed types. Please ensure all IDs are of the same type (all strings or all numbers).");
+            }
+
+            // Check edge source and target types
+            const edgeSourceTypes = new Set(graphData.edges.map(edge => typeof edge.source));
+            const edgeTargetTypes = new Set(graphData.edges.map(edge => typeof edge.target));
+            // console.log(`Edge source ID types: ${Array.from(edgeSourceTypes).join(', ')}`);
+            // console.log(`Edge target ID types: ${Array.from(edgeTargetTypes).join(', ')}`);
+            if (edgeSourceTypes.size > 1 || edgeTargetTypes.size > 1) {
+                console.warn("Edge source/target IDs have mixed types. Ensure all are of the same type as node IDs.");
+                alert("Warning: Edge source/target IDs have mixed types. Please ensure all are of the same type as node IDs.");
+            }
+
+            // Precompute 'isIntra' for edges and bind source/target to node objects
+            const nodeMap = new Map(graphData.nodes.map(node => [node.id, node]));
+            graphData.edges.forEach(edge => {
+                edge.source = nodeMap.get(edge.source);
+                edge.target = nodeMap.get(edge.target);
+                edge.isIntra = edge.source && edge.target ? (edge.source.community === edge.target.community) : false;
+            });
+
+            // Initialize visualization components
+            initializeSVG();
+            populateLegend();
+            defineCommunityCenters(); // Ensure this is called before populating the dropdown
+            populateCommunityDropdown(); // Now called after defining community centers
+            drawGraphWithARIA(); // Ensure ARIA attributes are added
+        }).catch(error => {
+            console.error('Error loading data:', error);
+            alert('Failed to load network or legend data. Please check the console for more details.');
+        });
+
+        // Define Community Centers
+        let communityCenters = {};
+        function defineCommunityCenters() {
+            // Extract unique communities
+            const communitiesSet = new Set(graphData.nodes.map(d => d.community));
+            communities = Array.from(communitiesSet); // Store for navigation
+            const numCommunities = communities.length;
+
+            console.log("Communities found:", communities); // Debugging
+
+            // Define a color scale using a more vibrant pastel palette
+            const colorScale = d3.scaleOrdinal(d3.schemePastel1)
+                .domain(communities);
+
+            // Assign colors to communities
+            communities.forEach(community => {
+                communityColors[community] = colorScale(community);
+            });
+
+            // Assign center positions for each community to make layout more modular
+            const radius = Math.min(width, height) / 3; // Adjust as needed
+
+            communities.forEach((community, index) => {
+                const angle = (2 * Math.PI / numCommunities) * index;
+                communityCenters[community] = {
+                    x: width / 2 + radius * Math.cos(angle),
+                    y: height / 2 + radius * Math.sin(angle)
+                };
+                console.log(`Center for ${community}:`, communityCenters[community]); // Debugging
+            });
+        }
+
+        // Populate Legend
+        function populateLegend() {
+            const legendContainer = d3.select("#legend");
+            legendData.forEach(entry => {
+                // Ensure communityColors are assigned
+                if (!communityColors[entry.community]) {
+                    communityColors[entry.community] = entry.color;
+                }
+
+                let div = legendContainer.append("div")
+                    .style("display", "flex")
+                    .style("align-items", "center")
+                    .style("margin-bottom", "10px")
+                    .style("cursor", "pointer") // Make it clickable
+                    .on("click", () => selectCommunityFromDropdown(entry.community));
+                
+                div.append("div")
+                    .style("width", "20px")
+                    .style("height", "20px")
+                    .style("background-color", entry.color)
+                    .style("margin-right", "10px");
+                div.append("div")
+                    .text(`${entry.community}: ${entry.description}`);
+            });
+        }
+
+        // Populate Community Dropdown
+        function populateCommunityDropdown() {
+            const dropdown = d3.select("#community-dropdown");
+            // First option is 'All'
+            dropdown.append("option")
+                .attr("value", "All")
+                .text("All");
+            // Add all communities
+            communities.forEach(community => {
+                console.log(`Adding community to dropdown: ${community}`); // Debugging
+                dropdown.append("option")
+                    .attr("value", community)
+                    .text(community);
+            });
+        }
+
+        // Track expanded communities
+        const expandedCommunities = new Set();
+
+        // Function to select community from dropdown
+        function selectCommunity() {
+    const selected = document.getElementById('community-dropdown').value;
+    console.log(`Dropdown selected: ${selected}`); // Debugging
+
+    if (selected === "All") {
+        showAllCommunities();
+    } else {
+        let selectedCommunity = selected;
+
+        // Convert selectedCommunity to the same type as d.community
+        if (typeof graphData.nodes[0].community === 'number') {
+            selectedCommunity = +selectedCommunity; // Convert to number
+        } else {
+            selectedCommunity = selectedCommunity.toString(); // Ensure it's a string
+        }
+
+        showSingleCommunity(selectedCommunity);
+    }
+}
+
+
+        // Function to select community from legend click
+        function selectCommunityFromDropdown(community) {
+            // Set the dropdown value and trigger selection
+            d3.select("#community-dropdown").property("value", community);
+            // console.log(`Selecting community from legend: ${community}`); // Debugging
+            selectCommunity();
+        }
+
+        // Function to show a single community
+        function showSingleCommunity(community) {
+            // console.log(`Showing community: ${community}`); // Debugging
+
+            // Hide all nodes and links first
+            node.transition().duration(750)
+                .style("display", d => d.community === community ? "inline" : "none");
+            link.transition().duration(750)
+                .style("display", d => (d.source.community === community && d.target.community === community) ? "inline" : "none");
+            node.select("text").transition().duration(750)
+                .style("display", d => d.community === community ? "inline" : "none");
+
+            // Increase node and label sizes for the selected community
+            node.select("circle").transition().duration(750)
+                .attr("r", d => d.community === community ? 25 : 10); // Increase size for selected community, reduce others
+
+            node.select("text").transition().duration(750)
+                .attr("font-size", d => d.community === community ? "12px" : "8px"); // Increase font size for selected community, reduce others
+
+            // Center the view on the selected community
+            centerOnCommunity(community);
+
+            simulation.alpha(1).restart(); // Restart simulation to apply changes
+        }
+
+        // Show All Communities
+        function showAllCommunities() {
+            // console.log("Showing all communities"); // Debugging
+
+            // Show all nodes, links, and labels
+            node.transition().duration(750)
+                .style("display", "inline")
+                .select("circle")
+                .attr("r", 15); // Reset node size
+            link.transition().duration(750)
+                .style("display", "inline");
+            node.select("text").transition().duration(750)
+                .style("display", "inline")
+                .attr("font-size", "10px"); // Reset font size
+
+            // Reset link distances to default
+            simulation.force("link").distance(d => 50).strength(1);
+
+            // Reset charge and collision forces
+            simulation.force("charge").strength(-20);
+            simulation.force("collision").radius(25);
+
+            // Reset zoom to identity
+            svg.transition()
+                .duration(750)
+                .call(
+                    zoom.transform,
+                    d3.zoomIdentity
+                );
+
+            simulation.alpha(1).restart(); // Restart simulation to apply changes
+        }
+
+       
+
+        // Tick function
+        function ticked() {
+            // Update link positions
+            link
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+
+            // Update node group positions
+            node
+                .attr("transform", d => `translate(${d.x},${d.y})`);
+        }
+
+        // Dragging functions
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+
+        // Handle Mouse Over
+        function handleMouseOver(event, d) {
+            // Highlight the hovered node
+            d3.select(this).classed("highlighted", true);
+            
+            // Highlight the entire community
+            node.filter(nodeData => nodeData.community === d.community)
+                .classed("community-highlighted", true);
+
+            // Highlight all links connected to the community
+            link.filter(linkData => 
+                linkData.source.community === d.community ||
+                linkData.target.community === d.community
+            )
+            .classed("highlighted-edge", true)
+            .attr("stroke-width", 3)
+            .attr("stroke", "red");
+
+            // Display node details
+            displayNodeDetails(d);
+        }
+
+        // Handle Mouse Out
+        function handleMouseOut(event, d) {
+            // Remove highlight from the hovered node
+            d3.select(this).classed("highlighted", false);
+            
+            // Remove highlight from the entire community
+            node.filter(nodeData => nodeData.community === d.community)
+                .classed("community-highlighted", false);
+
+            // Remove highlight from links connected to the community
+            link.filter(linkData => 
+                linkData.source.community === d.community ||
+                linkData.target.community === d.community
+            )
+            .classed("highlighted-edge", false)
+            .attr("stroke-width", 2)
+            .attr("stroke", d => d.isIntra ? communityColors[d.source.community] : "#666");
+
+            // Hide node details
+            document.getElementById('node-details').innerHTML = "Click or hover over a node to see details.";
+        }
+
+        // Handle Click
+        function handleClick(event, d) {
+            // Display node details on click
+            displayNodeDetails(d);
+        }
+
+        // Display Node Details
+        function displayNodeDetails(nodeData) {
+            const details = `
+                <div><strong>Label:</strong> ${nodeData.label}</div>
+                <div><strong>Description:</strong> ${nodeData.description}</div>
+                <div><strong>Community:</strong> ${nodeData.community}</div>
+            `;
+            document.getElementById('node-details').innerHTML = details;
+        }
+
+        // Initialize Tooltips with Tippy.js
+        function initializeTooltips() {
+            node.each(function(d) {
+                tippy(this, {
+                    content: `<strong>${d.label}</strong><br>${d.description}`,
+                    allowHTML: true,
+                    interactive: true,
+                    trigger: 'mouseenter',
+                    placement: 'top',
+                    hideOnClick: false,
+                    theme: 'light',
+                    arrow: true,
+                });
+            });
+        }
+
+        // Search Functionality
+        function searchNode() {
+            const query = document.getElementById('search-box').value.toLowerCase();
+            resetHighlights();
+            if (query === "") return; // No action for empty search
+
+            // Highlight nodes that contain the query string
+            const matchedNodes = graphData.nodes.filter(d => d.label.toLowerCase().includes(query));
+
+            node.filter(d => d.label.toLowerCase().includes(query))
+                .classed("highlighted", true)
+                .select("circle")
+                .attr("stroke", "orange")
+                .attr("stroke-width", 3);
+
+            // Highlight connected edges
+            link.filter(d => 
+                matchedNodes.some(node => node.id === d.source.id || node.id === d.target.id)
+            )
+            .classed("highlighted-edge", true)
+            .attr("stroke-width", 3)
+            .attr("stroke", "orange");
+
+            // Optionally, zoom to the first matched node
+            if (matchedNodes.length > 0) {
+                const firstNode = matchedNodes[0];
+                const desiredScale = 2;
+                const transform = d3.zoomIdentity
+                    .translate(width / 2 - firstNode.x * desiredScale, height / 2 - firstNode.y * desiredScale)
+                    .scale(desiredScale);
+                svg.transition()
+                    .duration(750)
+                    .call(
+                        zoom.transform,
+                        transform
+                    );
+            }
+        }
+
+        // Reset Highlights and Node Positions
+        function resetHighlights() {
+            node.classed("highlighted", false)
+                .select("circle")
+                .attr("stroke", "#fff")
+                .attr("stroke-width", 1.5);
+
+            link.classed("highlighted-edge", false)
+                .attr("stroke", d => d.isIntra ? communityColors[d.source.community] : "#666")
+                .attr("stroke-width", 2);
+            
+            document.getElementById('search-box').value = ""; // Clear search box
+            document.getElementById('node-details').innerHTML = "Click or hover over a node to see details.";
+        }
+
+        // Toggle Legend Visibility
+        function toggleLegend() {
+            const legend = document.getElementById('legend');
+            const button = document.getElementById('toggle-legend');
+            if (legend.style.display === "none") {
+                legend.style.display = "block";
+                button.textContent = "Hide Legend";
+            } else {
+                legend.style.display = "none";
+                button.textContent = "Show Legend";
+            }
+        }
+
+        // Toggle Instructions Visibility
+        function toggleInstructions() {
+            const instructions = document.getElementById('how-to-guide');
+            const button = document.getElementById('toggle-instructions');
+            if (instructions.style.display === "none") {
+                instructions.style.display = "block";
+                button.textContent = "Hide Instructions";
+            } else {
+                instructions.style.display = "none";
+                button.textContent = "Show Instructions";
+            }
+        }
+
+        // Change Layout Dynamically
+        function changeLayout() {
+            const layoutType = document.getElementById('layout-dropdown').value;
+            simulation.stop();
+
+            if (layoutType === "force") {
+                // Force-Directed Layout
+                simulation
+                    .force("link").distance(50).strength(1)
+                    .force("charge", d3.forceManyBody().strength(-20))
+                    .force("collision", d3.forceCollide().radius(25))
+                    .force("x", null)
+                    .force("y", null);
+                simulation.alpha(1).restart();
+            } else if (layoutType === "hierarchical") {
+                // Hierarchical Layout (Simplified)
+                simulation
+                    .force("link").distance(100).strength(1)
+                    .force("x", d3.forceX().x(d => communityCenters[d.community].x))
+                    .force("y", d3.forceY().y(d => communityCenters[d.community].y))
+                    .force("charge", d3.forceManyBody().strength(-30))
+                    .force("collision", d3.forceCollide().radius(30));
+                simulation.alpha(1).restart();
+            }
+            // Removed Circular Layout Option
+        }
+
+        // Function to center the view on a specific community
+        function centerOnCommunity(community) {
+    // Get the nodes belonging to the selected community
+    const communityNodes = graphData.nodes.filter(d => d.community === community && d.x != null && d.y != null);
+
+    if (communityNodes.length === 0) {
+        console.warn(`No nodes found for community: ${community}`);
+        return;
+    }
+
+    // Compute the centroid of the community nodes
+    const centroid = {
+        x: d3.mean(communityNodes, d => d.x),
+        y: d3.mean(communityNodes, d => d.y)
+    };
+
+    const desiredScale = 1.5;
+
+    // Reset zoom to identity first
+    svg.transition()
+        .duration(750)
+        .call(
+            zoom.transform,
+            d3.zoomIdentity
+        )
+        .on('end', function() {
+            // After resetting zoom, apply the new transform
+            const transform = d3.zoomIdentity
+                .translate(width / 2 - centroid.x * desiredScale, height / 2 - centroid.y * desiredScale)
+                .scale(desiredScale);
+
+            svg.transition()
+                .duration(750)
+                .call(
+                    zoom.transform,
+                    transform
+                );
+        });
+}
+
+        // Draw the Graph with ARIA Attributes
+        function drawGraphWithARIA() {
+            drawGraph();
+            addARIAAttributes();
+        }
+
+        // Draw the Graph
+       // Draw the Graph
+function drawGraph() {
+    // Draw links using line elements
+    link = linkGroup.selectAll("line")
+        .data(graphData.edges)
+        .enter()
+        .append("line")
+        .attr("class", d => d.isIntra ? "link intra" : "link inter")
+        .attr("stroke", d => d.isIntra ? communityColors[d.source.community] : "#666")
+        .attr("stroke-opacity", 0.9)
+        .attr("stroke-width", 2);
+
+    // Draw nodes as groups
+    node = nodeGroup.selectAll("g")
+        .data(graphData.nodes)
+        .enter()
+        .append("g")
+        .attr("class", "node")
+        .attr("aria-label", d => d.label)
+        .on("mouseover", handleMouseOver)
+        .on("mouseout", handleMouseOut)
+        .on("click", handleClick)
+        .call(d3.drag()
+            .on("start", dragstarted)
+            .on("drag", dragged)
+            .on("end", dragended));
+
+    // Append circles to node groups
+    node.append("circle")
+        .attr("r", 20)
+        .attr("fill", d => communityColors[d.community] || "#666");
+
+    // Append text backgrounds (rectangles)
+    node.each(function(d) {
+        const nodeGroup = d3.select(this);
+
+        // Create text element first to measure its size
+        const textElement = nodeGroup.append("text")
+            .attr("class", "node-label")
+            .attr("text-anchor", "middle")
+            .attr("dy", 0)
+            .attr("dominant-baseline", "middle")
+            .attr("font-size", "10px");
+
+        const lines = splitLabel(d.label, 12); // Split label into lines of max 12 characters
+
+        lines.forEach((line, i) => {
+            textElement.append("tspan")
+                .attr("x", 0)
+                .attr("dy", i === 0 ? `-${(lines.length - 1) * 6}px` : "10px")
+                .text(line);
+        });
+
+        // Now that the text is created, we can get its dimensions
+        const bbox = textElement.node().getBBox();
+
+        // Append rect behind the text
+        nodeGroup.insert("rect", "text")
+            .attr("x", bbox.x - 2) // Add some padding
+            .attr("y", bbox.y - 2)
+            .attr("width", bbox.width + 4)
+            .attr("height", bbox.height + 4)
+            .attr("fill", "white")
+            .attr("opacity", 0.4);
+    });
+
+    // Initialize tooltips
+    initializeTooltips();
+
+    // Start simulation
+    simulation
+        .nodes(graphData.nodes)
+        .on("tick", ticked);
+
+    simulation.force("link")
+        .links(graphData.edges);
+
+    console.log(`Number of nodes: ${graphData.nodes.length}`);
+    console.log(`Number of edges: ${graphData.edges.length}`);
+}
+
+
+        // Function to split label into lines with max characters per line
+        function splitLabel(label, maxChars) {
+            const words = label.split(' ');
+            const lines = [];
+            let currentLine = '';
+
+            words.forEach(word => {
+                if ((currentLine + word).length <= maxChars) {
+                    currentLine += word + ' ';
+                } else {
+                    if (currentLine.length > 0) {
+                        lines.push(currentLine.trim());
+                        currentLine = word + ' ';
+                    } else {
+                        // If a single word exceeds maxChars, split the word
+                        const splitWord = word.match(new RegExp('.{1,' + maxChars + '}', 'g'));
+                        lines.push(...splitWord);
+                        currentLine = '';
+                    }
+                }
+            });
+
+            if (currentLine.trim().length > 0) {
+                lines.push(currentLine.trim());
+            }
+
+            return lines;
+        }
+
+        // Add ARIA Attributes for Accessibility
+        function addARIAAttributes() {
+            node.attr("aria-label", d => d.label);
+        }
+
+        // Implement Responsive Design
+        window.addEventListener("resize", () => {
+            width = window.innerWidth * 0.6;
+            height = window.innerHeight * 0.8;
+            svg.attr("width", width).attr("height", height);
+            simulation.force("center", d3.forceCenter(width / 2, height / 2));
+            simulation.alpha(1).restart();
+        });
+    </script>
+</body>
+</html>

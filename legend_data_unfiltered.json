@@ -1,0 +1,82 @@
+[
+    {
+        "community": "0",
+        "color": "#fbb4ae",
+        "description": " 'accurate, allies, always, analysis, anti, blue, concerned, crave, digitally, facts'"
+    },
+    {
+        "community": "1",
+        "color": "#b3cde3",
+        "description": " 'based, brain, cognitive, digital, gender, mental, more, network, neuroscience, studying'"
+    },
+    {
+        "community": "2",
+        "color": "#ccebc5",
+        "description": " 'care, covid, death, doctors, eu, healthcare, international, long, politics, uk'"
+    },
+    {
+        "community": "3",
+        "color": "#decbe4",
+        "description": " 'academicchatter, academicsky, canadian, departments, don, journals, organizations, plant, societies, universities'"
+    },
+    {
+        "community": "4",
+        "color": "#fed9a6",
+        "description": " 'alle, een, er, extinction, laat, local, netherlands, rebellion, worldwide, xr'"
+    },
+    {
+        "community": "5",
+        "color": "#ffffcc",
+        "description": " 'activists, corruption, democracy, disinformation, extremism, information, journalism, open, osint, ukraine'"
+    },
+    {
+        "community": "6",
+        "color": "#e5d8bd",
+        "description": " 'biology, cancer, cell, chemistry, clinicians, including, institute, more, stem, studying'"
+    },
+    {
+        "community": "7",
+        "color": "#fddaec",
+        "description": " 'activists, change, environment, environmental, human, including, organisations, practitioners, resilience, writers'"
+    },
+    {
+        "community": "8",
+        "color": "#f2f2f2",
+        "description": " 'communication, ethics, games, ireland, medicine, more, organisations, sport, tobacco, uk'"
+    },
+    {
+        "community": "9",
+        "color": "#fbb4ae",
+        "description": " 'black, but, economic, economics, economists, justice, labor, methods, more, think'"
+    },
+    {
+        "community": "10",
+        "color": "#b3cde3",
+        "description": ": 'broadly, china, european, international, migration, more, political, politics, relations, sciences'"
+    },
+    {
+        "community": "11",
+        "color": "#ccebc5",
+        "description": ": 'broadly, feed, free, journals, law, literature, message, philosophy, sport, writers'"
+    },
+    {
+        "community": "12",
+        "color": "#decbe4",
+        "description": ": 'active, clear, communication, computing, information, joined, quantum, specializing, subjective, theory'"
+    },
+    {
+        "community": "13",
+        "color": "#fed9a6",
+        "description": ": 'autism, development, disability, integrity, literacy, open, phd, student, uk, writing'"
+    },
+    {
+        "community": "14",
+        "color": "#ffffcc",
+        "description": ": 'engineers, human, learning, machine, ml, more, nlp, robotics, systems, tech'"
+    },
+    {
+        "community": "15",
+        "color": "#e5d8bd",
+        "description": ": 'animal, biodiversity, conservation, ecological, ecology, environmental, evolution, marine, plant, wildlife'"
+    }
+]

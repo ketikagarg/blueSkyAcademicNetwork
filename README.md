@@ -9,9 +9,9 @@ This repository stores an interactive network file of the academic starter packs
 There are two network files available for visualization. Play around to see which one you prefer:
 
 - [Network 1](https://ketikagarg.github.io/blueSkyAcademicNetwork/network1.html)
-- [Network 2](https://ketikagarg.github.io/blueSkyAcademicNetwork/network2.html)
+- [Network 2](https://ketikagarg.github.io/blueSkyAcademicNetwork/network2.html) this is better!
 
-It does not cover all the academic starter packs in the interest of easier data handling. There are currently ~1000 packs included.
+These do not cover all the academic starter packs in the interest of easier data handling. Main filter applied was the presence of at least 3 members between packs to register an edge between them (to remove spurious connections). There are currently ~1000 packs included. If you are curious to see around 2000 nodes in an network without the filter: [whole Network](https://ketikagarg.github.io/blueSkyAcademicNetwork/wholeNetwork.html)
 
 I will continue updating the network as starter packs grow.
 
