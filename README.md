@@ -4,7 +4,9 @@
 
 #### 30 Nov 2024
 
-This repository stores an interactive network file of the academic starter packs.
+This repository stores an interactive network file of the academic starter packs. The data here has been pulled from https://blueskydirectory.com/starter-packs/all and from bluesky's open data, with the help of blueksy developer APIs (https://docs.bsky.app/).
+
+Each node is an academic starter pack. Connections (or edges) between any two given packs are based on the number of shared members between them. Community detection is done using louvain method, which seems to work pretty well so far, imo. But I can explore other methods, too.
 
 There are two network files available for visualization. Play around to see which one you prefer:
 
