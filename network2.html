@@ -225,7 +225,7 @@
 
             /* Adjust label font size when communities are toggled */
             .node.community-highlighted circle {
-                r: 15px;
+                r: 12px;
             }
 
             /* Note: Simulation forces are handled in JavaScript */
@@ -292,6 +292,7 @@
                     <li><b>Node Interaction:</b> Click or hover a node to view its details. Drag them around to re-adjust</li>
                     <li><b>Legend:</b> Communities and their associated topics (not perfect!).</li>
                     <li><b>Community Navigation:</b> Select a community to focus on the subgraph.</li>
+                    <li> For more info: <a href="https://ketikagarg.github.io/blueSkyAcademicNetwork/">README</a></li>
                 </ul>
             </div>
             
@@ -641,7 +642,7 @@ function populateCommunityDropdown() {
 
             // Increase node and label sizes for the selected community
             node.select("circle").transition().duration(750)
-                .attr("r", d => d.community === community ? 25 : 10); // Increase size for selected community, reduce others
+                .attr("r", d => d.community === community ? 15 : 10); // Increase size for selected community, reduce others
 
             node.select("text").transition().duration(750)
                 .attr("font-size", d => d.community === community ? "12px" : "8px"); // Increase font size for selected community, reduce others
