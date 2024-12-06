@@ -373,11 +373,11 @@
 
         // Load Data and Initialize Visualization
         Promise.all([
-            fetch('../network_filter3.json').then(res => {
+            fetch('network_filter3.json').then(res => {
                 if (!res.ok) throw new Error(`Failed to fetch network_data.json: ${res.statusText}`);
                 return res.json();
             }),
-            fetch('../legend_filter3.json').then(res => {
+            fetch('legend_filter3.json').then(res => {
                 if (!res.ok) throw new Error(`Failed to fetch legend_data.json: ${res.statusText}`);
                 return res.json();
             })
