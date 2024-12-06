@@ -108,36 +108,6 @@
             padding-left: 20px;
         }
 
-        /* Community Panel Styles */
-        #community-panel {
-            display: none;
-            max-height: 300px;
-            overflow-y: auto;
-            border: 1px solid #ccc;
-            padding: 10px;
-            margin-top: 10px;
-            background-color: #fff;
-        }
-
-        #community-panel h4 {
-            margin-bottom: 10px;
-        }
-
-        #community-checkboxes {
-            max-height: 200px;
-            overflow-y: auto;
-            border-top: 1px solid #ddd;
-            padding-top: 10px;
-        }
-
-        /* Buttons Inside Community Panel */
-        #community-panel button {
-            margin-bottom: 10px;
-            padding: 5px 10px;
-            font-size: 12px;
-            cursor: pointer;
-        }
-
         /* Node Styles */
         .node {
             cursor: pointer;
@@ -225,7 +195,7 @@
 
             /* Adjust label font size when communities are toggled */
             .node.community-highlighted circle {
-                r: 15px;
+                r: 12px;
             }
 
             /* Note: Simulation forces are handled in JavaScript */
@@ -245,19 +215,17 @@
         <button onclick="searchNode()">Search</button>
         <button onclick="resetHighlights()">Reset</button>
         
+        <!-- Prev and Next Result Buttons -->
+        <button id="prev-result" onclick="prevResult()" disabled>Prev Result</button>
+        <button id="next-result" onclick="nextResult()" disabled>Next Result</button>
+        
         <!-- Toggle Legend -->
         <button id="toggle-legend" onclick="toggleLegend()">Hide Legend</button>
         
         <!-- Toggle Instructions -->
         <button id="toggle-instructions" onclick="toggleInstructions()">Hide Instructions</button>
         
-        <!-- Layout Dropdown -->
-        <label for="layout-dropdown">Change Layout:</label>
-        <select id="layout-dropdown" onchange="changeLayout()">
-            <option value="force">Force-Directed</option>
-            <option value="hierarchical">Hierarchical</option>
-            <!-- Removed Circular Layout Option -->
-        </select>
+        <!-- Removed Layout Dropdown -->
         
         <!-- Community Navigation Dropdown -->
         <label for="community-dropdown">Select Community:</label>
@@ -287,11 +255,12 @@
                 <ul>
                     <li><b>Zoom:</b> Use mouse scroll or pinch gestures to zoom in and out.</li>
                     <li><b>Pan:</b> Click and drag to move around the network.</li>
-                    <li><b>Search:</b> Enter a term in the search box to highlight matching nodes.</li>
+                    <li><b>Search:</b> Enter a term in the search box to highlight matching nodes. Toggle between the searched nodes with Prev Results and Next Result</li>
                     <li><b>Reset:</b> Click "Reset" to clear highlights and return to the initial view.</li>
                     <li><b>Node Interaction:</b> Click or hover a node to view its details. Drag them around to re-adjust</li>
                     <li><b>Legend:</b> Communities and their associated topics (not perfect!).</li>
-                    <li><b>Community Navigation:</b> Select a community to focus on the subgraph.</li>
+                    <li><b>Community Navigation:</b> Select a community to focus on the subgraph. Or click on the legend!</li>
+                    <li> For more info: <a href="https://ketikagarg.github.io/blueSkyAcademicNetwork/">README</a></li>
                 </ul>
             </div>
             
@@ -313,6 +282,10 @@
         let graphData, legendData;
         let communityVisualizationEnabled = false; // Flag for community-by-community visualization
         let communities = []; // Array of community names
+
+        // Variables for Search Results
+        let searchResults = [];
+        let currentSearchIndex = -1;
 
         // Initialize SVG and Simulation
         function initializeSVG() {
@@ -342,7 +315,7 @@
                 .force("link", d3.forceLink().id(d => d.id).distance(50))
                 .force("charge", d3.forceManyBody().strength(-20))
                 .force("center", d3.forceCenter(width / 2, height / 2))
-                .force("collision", d3.forceCollide().radius(25)); // Increased collision radius for larger nodes
+                .force("collision", d3.forceCollide().radius(30)); // Increased collision radius for larger nodes
 
             // Initialize resizer
             initializeResizer();
@@ -400,11 +373,11 @@
 
         // Load Data and Initialize Visualization
         Promise.all([
-            fetch('network_data_unfiltered.json').then(res => {
+            fetch('../network_filter1.json').then(res => {
                 if (!res.ok) throw new Error(`Failed to fetch network_data.json: ${res.statusText}`);
                 return res.json();
             }),
-            fetch('legend_data_unfiltered.json').then(res => {
+            fetch('../legend_filter1.json').then(res => {
                 if (!res.ok) throw new Error(`Failed to fetch legend_data.json: ${res.statusText}`);
                 return res.json();
             })
@@ -565,8 +538,22 @@
             dropdown.append("option")
                 .attr("value", "All")
                 .text("All");
-            // Add all communities
-            communities.forEach(community => {
+
+            // Determine if communities are numeric
+            const areCommunitiesNumeric = communities.every(c => !isNaN(c));
+
+            let sortedCommunities;
+
+            if (areCommunitiesNumeric) {
+                // Convert to numbers and sort numerically
+                sortedCommunities = communities.map(c => +c).sort((a, b) => a - b);
+            } else {
+                // Sort alphabetically
+                sortedCommunities = communities.slice().sort((a, b) => a.localeCompare(b));
+            }
+
+            // Add all communities to the dropdown
+            sortedCommunities.forEach(community => {
                 console.log(`Adding community to dropdown: ${community}`); // Debugging
                 dropdown.append("option")
                     .attr("value", community)
@@ -574,30 +561,26 @@
             });
         }
 
-        // Track expanded communities
-        const expandedCommunities = new Set();
-
         // Function to select community from dropdown
         function selectCommunity() {
-    const selected = document.getElementById('community-dropdown').value;
-    console.log(`Dropdown selected: ${selected}`); // Debugging
+            const selected = document.getElementById('community-dropdown').value;
+            console.log(`Dropdown selected: ${selected}`); // Debugging
 
-    if (selected === "All") {
-        showAllCommunities();
-    } else {
-        let selectedCommunity = selected;
+            if (selected === "All") {
+                showAllCommunities();
+            } else {
+                let selectedCommunity = selected;
 
-        // Convert selectedCommunity to the same type as d.community
-        if (typeof graphData.nodes[0].community === 'number') {
-            selectedCommunity = +selectedCommunity; // Convert to number
-        } else {
-            selectedCommunity = selectedCommunity.toString(); // Ensure it's a string
+                // Convert selectedCommunity to the same type as d.community
+                if (typeof graphData.nodes[0].community === 'number') {
+                    selectedCommunity = +selectedCommunity; // Convert to number
+                } else {
+                    selectedCommunity = selectedCommunity.toString(); // Ensure it's a string
+                }
+
+                showSingleCommunity(selectedCommunity);
+            }
         }
-
-        showSingleCommunity(selectedCommunity);
-    }
-}
-
 
         // Function to select community from legend click
         function selectCommunityFromDropdown(community) {
@@ -621,7 +604,7 @@
 
             // Increase node and label sizes for the selected community
             node.select("circle").transition().duration(750)
-                .attr("r", d => d.community === community ? 25 : 10); // Increase size for selected community, reduce others
+                .attr("r", d => d.community === community ? 15 : 10); // Increase size for selected community, reduce others
 
             node.select("text").transition().duration(750)
                 .attr("font-size", d => d.community === community ? "12px" : "8px"); // Increase font size for selected community, reduce others
@@ -664,8 +647,6 @@
 
             simulation.alpha(1).restart(); // Restart simulation to apply changes
         }
-
-       
 
         // Tick function
         function ticked() {
@@ -755,6 +736,7 @@
                 <div><strong>Label:</strong> ${nodeData.label}</div>
                 <div><strong>Description:</strong> ${nodeData.description}</div>
                 <div><strong>Community:</strong> ${nodeData.community}</div>
+                 
             `;
             document.getElementById('node-details').innerHTML = details;
         }
@@ -781,37 +763,89 @@
             resetHighlights();
             if (query === "") return; // No action for empty search
 
-            // Highlight nodes that contain the query string
-            const matchedNodes = graphData.nodes.filter(d => d.label.toLowerCase().includes(query));
+            // Find all matching nodes
+            searchResults = graphData.nodes.filter(d => d.label.toLowerCase().includes(query));
+            if (searchResults.length === 0) {
+                alert("No matching nodes found.");
+                return;
+            }
 
-            node.filter(d => d.label.toLowerCase().includes(query))
+            // Initialize currentSearchIndex
+            currentSearchIndex = 0;
+
+            // Highlight the first matched node
+            highlightSearchResult(currentSearchIndex);
+
+            // Enable Prev and Next buttons if more than one result
+            if (searchResults.length > 1) {
+                document.getElementById('prev-result').disabled = false;
+                document.getElementById('next-result').disabled = false;
+            }
+        }
+
+        // Function to highlight a specific search result
+        function highlightSearchResult(index) {
+            // Remove previous highlights
+            node.classed("highlighted", false);
+            link.classed("highlighted-edge", false)
+                .attr("stroke", d => d.isIntra ? communityColors[d.source.community] : "#666")
+                .attr("stroke-width", 2);
+
+            const nodeData = searchResults[index];
+
+            // Highlight the node
+            node.filter(d => d.id === nodeData.id)
                 .classed("highlighted", true)
                 .select("circle")
                 .attr("stroke", "orange")
                 .attr("stroke-width", 3);
 
-            // Highlight connected edges
-            link.filter(d => 
-                matchedNodes.some(node => node.id === d.source.id || node.id === d.target.id)
-            )
-            .classed("highlighted-edge", true)
-            .attr("stroke-width", 3)
-            .attr("stroke", "orange");
+            // Highlight connected links
+            link.filter(d => d.source.id === nodeData.id || d.target.id === nodeData.id)
+                .classed("highlighted-edge", true)
+                .attr("stroke", "orange")
+                .attr("stroke-width", 3);
 
-            // Optionally, zoom to the first matched node
-            if (matchedNodes.length > 0) {
-                const firstNode = matchedNodes[0];
-                const desiredScale = 2;
-                const transform = d3.zoomIdentity
-                    .translate(width / 2 - firstNode.x * desiredScale, height / 2 - firstNode.y * desiredScale)
-                    .scale(desiredScale);
-                svg.transition()
-                    .duration(750)
-                    .call(
-                        zoom.transform,
-                        transform
-                    );
-            }
+            // Display node details
+            displayNodeDetails(nodeData);
+
+            // Optionally, zoom to the highlighted node
+            zoomToNode(nodeData);
+        }
+
+        // Function to zoom to a specific node
+        function zoomToNode(nodeData) {
+            const transform = d3.zoomIdentity
+                .translate(width / 2 - nodeData.x * 2, height / 2 - nodeData.y * 2)
+                .scale(2);
+            svg.transition()
+                .duration(750)
+                .call(
+                    zoom.transform,
+                    transform
+                );
+        }
+
+        // Function to navigate to the previous search result
+        function prevResult() {
+            if (searchResults.length === 0) return;
+
+            // Decrement index with wrap-around
+            currentSearchIndex = (currentSearchIndex - 1 + searchResults.length) % searchResults.length;
+
+            // Highlight the current result
+            highlightSearchResult(currentSearchIndex);
+        }
+
+        // Function to navigate to the next search result
+        function nextResult() {
+            if (searchResults.length === 0) return;
+
+            // Increment index with wrap-around
+            currentSearchIndex = (currentSearchIndex + 1) % searchResults.length;
+
+            // Highlight the current result
+            highlightSearchResult(currentSearchIndex);
         }
 
         // Reset Highlights and Node Positions
@@ -827,6 +861,14 @@
             
             document.getElementById('search-box').value = ""; // Clear search box
             document.getElementById('node-details').innerHTML = "Click or hover over a node to see details.";
+
+            // Disable Prev and Next buttons
+            document.getElementById('prev-result').disabled = true;
+            document.getElementById('next-result').disabled = true;
+
+            // Clear search results
+            searchResults = [];
+            currentSearchIndex = -1;
         }
 
         // Toggle Legend Visibility
@@ -855,72 +897,45 @@
             }
         }
 
-        // Change Layout Dynamically
-        function changeLayout() {
-            const layoutType = document.getElementById('layout-dropdown').value;
-            simulation.stop();
-
-            if (layoutType === "force") {
-                // Force-Directed Layout
-                simulation
-                    .force("link").distance(50).strength(1)
-                    .force("charge", d3.forceManyBody().strength(-20))
-                    .force("collision", d3.forceCollide().radius(25))
-                    .force("x", null)
-                    .force("y", null);
-                simulation.alpha(1).restart();
-            } else if (layoutType === "hierarchical") {
-                // Hierarchical Layout (Simplified)
-                simulation
-                    .force("link").distance(100).strength(1)
-                    .force("x", d3.forceX().x(d => communityCenters[d.community].x))
-                    .force("y", d3.forceY().y(d => communityCenters[d.community].y))
-                    .force("charge", d3.forceManyBody().strength(-30))
-                    .force("collision", d3.forceCollide().radius(30));
-                simulation.alpha(1).restart();
-            }
-            // Removed Circular Layout Option
-        }
-
         // Function to center the view on a specific community
         function centerOnCommunity(community) {
-    // Get the nodes belonging to the selected community
-    const communityNodes = graphData.nodes.filter(d => d.community === community && d.x != null && d.y != null);
+            // Get the nodes belonging to the selected community
+            const communityNodes = graphData.nodes.filter(d => d.community === community && d.x != null && d.y != null);
 
-    if (communityNodes.length === 0) {
-        console.warn(`No nodes found for community: ${community}`);
-        return;
-    }
+            if (communityNodes.length === 0) {
+                console.warn(`No nodes found for community: ${community}`);
+                return;
+            }
 
-    // Compute the centroid of the community nodes
-    const centroid = {
-        x: d3.mean(communityNodes, d => d.x),
-        y: d3.mean(communityNodes, d => d.y)
-    };
+            // Compute the centroid of the community nodes
+            const centroid = {
+                x: d3.mean(communityNodes, d => d.x),
+                y: d3.mean(communityNodes, d => d.y)
+            };
 
-    const desiredScale = 1.5;
+            const desiredScale = 1.5;
 
-    // Reset zoom to identity first
-    svg.transition()
-        .duration(750)
-        .call(
-            zoom.transform,
-            d3.zoomIdentity
-        )
-        .on('end', function() {
-            // After resetting zoom, apply the new transform
-            const transform = d3.zoomIdentity
-                .translate(width / 2 - centroid.x * desiredScale, height / 2 - centroid.y * desiredScale)
-                .scale(desiredScale);
-
+            // Reset zoom to identity first
             svg.transition()
                 .duration(750)
                 .call(
                     zoom.transform,
-                    transform
-                );
-        });
-}
+                    d3.zoomIdentity
+                )
+                .on('end', function() {
+                    // After resetting zoom, apply the new transform
+                    const transform = d3.zoomIdentity
+                        .translate(width / 2 - centroid.x * desiredScale, height / 2 - centroid.y * desiredScale)
+                        .scale(desiredScale);
+
+                    svg.transition()
+                        .duration(750)
+                        .call(
+                            zoom.transform,
+                            transform
+                        );
+                });
+        }
 
         // Draw the Graph with ARIA Attributes
         function drawGraphWithARIA() {
@@ -929,87 +944,85 @@
         }
 
         // Draw the Graph
-       // Draw the Graph
-function drawGraph() {
-    // Draw links using line elements
-    link = linkGroup.selectAll("line")
-        .data(graphData.edges)
-        .enter()
-        .append("line")
-        .attr("class", d => d.isIntra ? "link intra" : "link inter")
-        .attr("stroke", d => d.isIntra ? communityColors[d.source.community] : "#666")
-        .attr("stroke-opacity", 0.9)
-        .attr("stroke-width", 2);
+        function drawGraph() {
+            // Draw links using line elements
+            link = linkGroup.selectAll("line")
+                .data(graphData.edges)
+                .enter()
+                .append("line")
+                .attr("class", d => d.isIntra ? "link intra" : "link inter")
+                .attr("stroke", d => d.isIntra ? communityColors[d.source.community] : "#666")
+                .attr("stroke-opacity", 0.9)
+                .attr("stroke-width", 2);
 
-    // Draw nodes as groups
-    node = nodeGroup.selectAll("g")
-        .data(graphData.nodes)
-        .enter()
-        .append("g")
-        .attr("class", "node")
-        .attr("aria-label", d => d.label)
-        .on("mouseover", handleMouseOver)
-        .on("mouseout", handleMouseOut)
-        .on("click", handleClick)
-        .call(d3.drag()
-            .on("start", dragstarted)
-            .on("drag", dragged)
-            .on("end", dragended));
+            // Draw nodes as groups
+            node = nodeGroup.selectAll("g")
+                .data(graphData.nodes)
+                .enter()
+                .append("g")
+                .attr("class", "node")
+                .attr("aria-label", d => d.label)
+                .on("mouseover", handleMouseOver)
+                .on("mouseout", handleMouseOut)
+                .on("click", handleClick)
+                .call(d3.drag()
+                    .on("start", dragstarted)
+                    .on("drag", dragged)
+                    .on("end", dragended));
 
-    // Append circles to node groups
-    node.append("circle")
-        .attr("r", 20)
-        .attr("fill", d => communityColors[d.community] || "#666");
+            // Append circles to node groups
+            node.append("circle")
+                .attr("r", 20)
+                .attr("fill", d => communityColors[d.community] || "#666");
 
-    // Append text backgrounds (rectangles)
-    node.each(function(d) {
-        const nodeGroup = d3.select(this);
+            // Append text backgrounds (rectangles)
+            node.each(function(d) {
+                const nodeGroup = d3.select(this);
 
-        // Create text element first to measure its size
-        const textElement = nodeGroup.append("text")
-            .attr("class", "node-label")
-            .attr("text-anchor", "middle")
-            .attr("dy", 0)
-            .attr("dominant-baseline", "middle")
-            .attr("font-size", "10px");
+                // Create text element first to measure its size
+                const textElement = nodeGroup.append("text")
+                    .attr("class", "node-label")
+                    .attr("text-anchor", "middle")
+                    .attr("dy", 0)
+                    .attr("dominant-baseline", "middle")
+                    .attr("font-size", "10px");
 
-        const lines = splitLabel(d.label, 12); // Split label into lines of max 12 characters
+                const lines = splitLabel(d.label, 12); // Split label into lines of max 12 characters
 
-        lines.forEach((line, i) => {
-            textElement.append("tspan")
-                .attr("x", 0)
-                .attr("dy", i === 0 ? `-${(lines.length - 1) * 6}px` : "10px")
-                .text(line);
-        });
+                lines.forEach((line, i) => {
+                    textElement.append("tspan")
+                        .attr("x", 0)
+                        .attr("dy", i === 0 ? `-${(lines.length - 1) * 6}px` : "10px")
+                        .text(line);
+                });
 
-        // Now that the text is created, we can get its dimensions
-        const bbox = textElement.node().getBBox();
+                // Now that the text is created, we can get its dimensions
+                const bbox = textElement.node().getBBox();
 
-        // Append rect behind the text
-        nodeGroup.insert("rect", "text")
-            .attr("x", bbox.x - 2) // Add some padding
-            .attr("y", bbox.y - 2)
-            .attr("width", bbox.width + 4)
-            .attr("height", bbox.height + 4)
-            .attr("fill", "white")
-            .attr("opacity", 0.4);
-    });
+                // Append rect behind the text
+                nodeGroup.insert("rect", "text")
+                    .attr("x", bbox.x - 2) // Add some padding
+                    .attr("y", bbox.y - 2)
+                    .attr("width", bbox.width + 4)
+                    .attr("height", bbox.height + 4)
+                    .attr("fill", "white")
+                    .attr("opacity", 0.4);
+            });
 
-    // Initialize tooltips
-    initializeTooltips();
+            // Initialize tooltips
+            initializeTooltips();
 
-    // Start simulation
-    simulation
-        .nodes(graphData.nodes)
-        .on("tick", ticked);
+            // Start simulation
+            simulation
+                .nodes(graphData.nodes)
+                .on("tick", ticked);
 
-    simulation.force("link")
-        .links(graphData.edges);
+            simulation.force("link")
+                .links(graphData.edges);
 
-    console.log(`Number of nodes: ${graphData.nodes.length}`);
-    console.log(`Number of edges: ${graphData.edges.length}`);
-}
-
+            console.log(`Number of nodes: ${graphData.nodes.length}`);
+            console.log(`Number of edges: ${graphData.edges.length}`);
+        }
 
         // Function to split label into lines with max characters per line
         function splitLabel(label, maxChars) {
