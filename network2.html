@@ -839,6 +839,9 @@ function updateLegend(colorMode) {
         function handleMouseOver(event, d) {
             // Highlight the hovered node
             d3.select(this).classed("highlighted", true);
+
+            //increase collision radius on hover
+            simulation.force("collision").radius(40);
             
             // Highlight the entire community
             node.filter(nodeData => nodeData.community === d.community)
