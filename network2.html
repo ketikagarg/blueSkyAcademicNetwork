@@ -130,7 +130,7 @@
         .link {
             stroke: #666; /* Darker color for better visibility */
             stroke-opacity: 0.9; /* Increased opacity */
-            stroke-width: 2px;
+            stroke-width: 1.5px;
             transition: stroke-width 0.2s ease, stroke 0.2s ease;
         }
 
@@ -226,6 +226,14 @@
         <button id="toggle-instructions" onclick="toggleInstructions()">Hide Instructions</button>
         
         <!-- Removed Layout Dropdown -->
+
+            <label for="colorBy"><b>NEW:</b> Color by:</label>
+            <select id="colorBy" onchange="updateNodeColors()">
+            <option value="communityColor">Community</option>
+            <option value="proportionOfMenColor">Proportion of Men</option>
+            <option value="proportionOfWomenColor">Proportion of Women</option>
+            </select>
+
         
         <!-- Community Navigation Dropdown -->
         <label for="community-dropdown">Select Community:</label>
@@ -233,7 +241,12 @@
             <option value="All">All</option>
             <!-- Community options will be populated dynamically -->
         </select>
+
+        <!-- //add a button to a link to the github page -->
+        <a href=" https://ketikagarg.github.io/blueSkyAcademicNetwork/stats.html"><button><b>NEW: </b>See Gender Stats</button></a>
+
     </div>
+
     
     <!-- Main Content Area -->
     <div id="content">
@@ -260,6 +273,7 @@
                     <li><b>Node Interaction:</b> Click or hover a node to view its details. Drag them around to re-adjust</li>
                     <li><b>Legend:</b> Communities and their associated topics (not perfect!).</li>
                     <li><b>Community Navigation:</b> Select a community to focus on the subgraph. Or click on the legend!</li>
+                    <li><b>Color By:</b> Choose between Community or Proportion of Men or Women.</li>
                     <li> For more info: <a href="https://ketikagarg.github.io/blueSkyAcademicNetwork/">README</a></li>
                 </ul>
             </div>
@@ -311,20 +325,144 @@
                 .attr("class", "nodes");
 
             // Initialize simulation
+            // simulation = d3.forceSimulation()
+            //     .force("link", d3.forceLink().id(d => d.id).distance(50))
+            //     .force("charge", d3.forceManyBody().strength(-20))
+            //     .force("center", d3.forceCenter(width / 2, height / 2))
+            //     .force("collision", d3.forceCollide().radius(30)); // Increased collision radius for larger nodes
             simulation = d3.forceSimulation()
-                .force("link", d3.forceLink().id(d => d.id).distance(50))
-                .force("charge", d3.forceManyBody().strength(-20))
-                .force("center", d3.forceCenter(width / 2, height / 2))
-                .force("collision", d3.forceCollide().radius(30)); // Increased collision radius for larger nodes
+    .force("link", d3.forceLink().id(d => d.id).distance(60))
+    .force("charge", d3.forceManyBody().strength(-30))
+    .force("center", d3.forceCenter(width / 2, height / 2))
+    .force("collision", d3.forceCollide().radius(20)) // Keep nodes from overlapping
+    .force("clustering", clusteringForce(2)); // Add clustering force
+    // Add clustering force
 
             // Initialize resizer
             initializeResizer();
         }
 
+    function clusteringForce(strength) {
+    return function(alpha) {
+        graphData.nodes.forEach(node => {
+            let community = node.community; // Adjust to other attributes if needed
+            let communityNodes = graphData.nodes.filter(n => n.community === community);
+            
+            if (communityNodes.length < 2) return; // Skip if only one node in a group
+
+            let clusterCenterX = d3.mean(communityNodes, d => d.x);
+            let clusterCenterY = d3.mean(communityNodes, d => d.y);
+
+            node.vx -= (node.x - clusterCenterX) * strength * alpha;
+            node.vy -= (node.y - clusterCenterY) * strength * alpha;
+        });
+    };
+}
+
+
+
+
         // Zoom handler
         function zoomed(event) {
             svg.select('g').attr("transform", event.transform);
         }
+
+        function updateNodeColors() {
+    const selectedColorBy = document.getElementById('colorBy').value;
+
+    // Update node colors
+    node.select("circle").transition().duration(750)
+        .attr("fill", d => d.style?.[selectedColorBy] || "#666");
+
+    // Adjust clustering force strength based on color mode
+    let strength = selectedColorBy === "communityColor" ? 0.5 : 0.5; // Stronger for proportion-based coloring
+    let repulsion = selectedColorBy === "communityColor" ? -10 : -10; // Increase repulsion for better separation
+
+    // simulation.force("clustering", clusteringForce(strength));
+    // simulation.force("charge", d3.forceManyBody().strength(repulsion)); // Adjust repulsion
+    //         //increase distance between nodes
+    //         simulation.force("link").distance(d => 100); 
+    //         //increase radius of collision
+    //         simulation.force("collision").radius(100);
+    // Reset node positions slightly to allow a better reshuffle
+    // graphData.nodes.forEach(node => {
+    //     node.x += (Math.random() - 0.5) * 100; // Random nudge
+    //     node.y += (Math.random() - 0.5) * 100;
+    // });
+
+    graphData.nodes.forEach(node => {
+    node.x = Math.random() * width;
+    node.y = Math.random() * height;
+});
+
+
+    simulation.alpha(1).restart(); // Restart simulation for better movement
+
+    // Update the legend
+    updateLegend(selectedColorBy);
+}
+
+
+
+function updateLegend(colorMode) {
+    const legendContainer = d3.select("#legend");
+    legendContainer.html(""); // Clear old legend
+
+    if (colorMode === "communityColor") {
+        // Community-based legend
+        legendData.forEach(entry => {
+            let div = legendContainer.append("div")
+                .style("display", "flex")
+                .style("align-items", "center")
+                .style("margin-bottom", "10px");
+
+            div.append("div")
+                .style("width", "20px")
+                .style("height", "20px")
+                .style("background-color", entry.color)
+                .style("margin-right", "10px");
+
+            div.append("div")
+                .text(`${entry.community}: ${entry.description}`);
+        });
+
+    } else {
+        // Proportion-based legend (Gradient)
+        let gradientColor = colorMode === "proportionOfMenColor" ? ["#ffd700", "#ff4500"] : ["#00ffff", "#ff00ff"]; // Autumn for men, Cool for women
+        let labelText = colorMode === "proportionOfMenColor" ? "Proportion of Men" : "Proportion of Women";
+
+        let legendTitle = legendContainer.append("div").style("margin-bottom", "10px");
+        legendTitle.append("strong").text(labelText);
+
+        let gradientBar = legendContainer.append("div")
+            .style("width", "100%")
+            .style("height", "20px")
+            .style("background", `linear-gradient(to right, ${gradientColor[0]}, ${gradientColor[1]})`);
+
+        let legendLabels = legendContainer.append("div")
+            .style("display", "flex")
+            .style("justify-content", "space-between")
+            .style("font-size", "12px");
+
+        legendLabels.append("div").text("0%");  // Min Value
+        legendLabels.append("div").text("50%"); // Mid Value
+        legendLabels.append("div").text("100%"); // Max Value
+
+        // Add a note about the color scale
+        let note = legendContainer.append("div")
+            .style("font-size", "10px")
+            .style("color", "#666")
+            .style("margin-top", "10px")
+            .text("Note: Colors represent a gradient scale from 0% to 100%. Proportion is calculated based on total men and women identified." + 
+
+            "Gender is identified based on the pronouns used in the bio. If the pronouns are not mentioned, then Gender API is used on the first name to predict gender."
+            );
+            
+
+    }
+}
+
+
 
         // Resizer Initialization
         function initializeResizer() {
@@ -373,23 +511,31 @@
 
         // Load Data and Initialize Visualization
         Promise.all([
-            fetch('network_filter3.json').then(res => {
+            fetch('./network_filter4.json').then(res => {
                 if (!res.ok) throw new Error(`Failed to fetch network_data.json: ${res.statusText}`);
                 return res.json();
             }),
-            fetch('legend_filter3.json').then(res => {
+            fetch('./legend_filter4.json').then(res => {
                 if (!res.ok) throw new Error(`Failed to fetch legend_data.json: ${res.statusText}`);
                 return res.json();
             })
         ]).then(([network, legend]) => {
             graphData = network;
             legendData = legend;
+            updateLegend("communityColor"); // Default to community legend
+
 
             console.log("Network Data:", graphData); // Debugging
             console.log("Legend Data:", legendData); // Debugging
 
             // Transform nodes and edges to extract 'data' properties
-            graphData.nodes = graphData.nodes.map(node => node.data);
+            // graphData.nodes = graphData.nodes.map(node => node.data);
+            // //add style to nodes
+            graphData.nodes = graphData.nodes.map(node => ({
+        ...node.data,  // Keep original node data
+        style: node.style || {} // Preserve style without modification
+    }));
+
             graphData.edges = graphData.edges.map(edge => edge.data);
 
             // Data Validation: Check all edges have valid source and target
@@ -595,16 +741,17 @@
             // console.log(`Showing community: ${community}`); // Debugging
 
             // Hide all nodes and links first
-            node.transition().duration(750)
+            node.transition().duration(50)
                 .style("display", d => d.community === community ? "inline" : "none");
             link.transition().duration(750)
-                .style("display", d => (d.source.community === community && d.target.community === community) ? "inline" : "none");
+                .style("display", d => (d.source.community === community 
+                && d.target.community === community) ? "inline" : "none");
             node.select("text").transition().duration(750)
                 .style("display", d => d.community === community ? "inline" : "none");
 
             // Increase node and label sizes for the selected community
             node.select("circle").transition().duration(750)
-                .attr("r", d => d.community === community ? 15 : 10); // Increase size for selected community, reduce others
+                .attr("r", d => d.community === community ? 25 : 20); // Increase size for selected community, reduce others
 
             node.select("text").transition().duration(750)
                 .attr("font-size", d => d.community === community ? "12px" : "8px"); // Increase font size for selected community, reduce others
@@ -623,7 +770,7 @@
             node.transition().duration(750)
                 .style("display", "inline")
                 .select("circle")
-                .attr("r", 15); // Reset node size
+                .attr("r", 25); // Reset node size
             link.transition().duration(750)
                 .style("display", "inline");
             node.select("text").transition().duration(750)
@@ -631,11 +778,19 @@
                 .attr("font-size", "10px"); // Reset font size
 
             // Reset link distances to default
-            simulation.force("link").distance(d => 50).strength(1);
+            // simulation.force("link").distance(d => 30).strength(1);
+            // // Reset charge and collision forces
+            // simulation.force("charge").strength(-20);
+            // simulation.force("collision").radius(25);
 
-            // Reset charge and collision forces
-            simulation.force("charge").strength(-20);
-            simulation.force("collision").radius(25);
+            simulation = d3.forceSimulation()
+    .force("link", d3.forceLink().id(d => d.id).distance(60))
+    .force("charge", d3.forceManyBody().strength(-30))
+    .force("center", d3.forceCenter(width / 2, height / 2))
+    .force("collision", d3.forceCollide().radius(20)) // Keep nodes from overlapping
+    .force("clustering", clusteringForce(2)); // Add clustering force
+
+
 
             // Reset zoom to identity
             svg.transition()
@@ -736,6 +891,11 @@
                 <div><strong>Label:</strong> ${nodeData.label}</div>
                 <div><strong>Description:</strong> ${nodeData.description}</div>
                 <div><strong>Community:</strong> ${nodeData.community}</div>
+                <div><strong>Total Members:</strong> ${nodeData.totalMembers}</div>        
+             <div><strong>Total Members' Gender Identified:</strong> ${nodeData.totalIdentified}</div>
+                <div><strong>Proportion of Men:</strong> ${nodeData.proportionOfMen}</div>
+                <div><strong>Proportion of Women:</strong> ${nodeData.proportionOfWomen}</div>
+
                  
             `;
             document.getElementById('node-details').innerHTML = details;
@@ -935,6 +1095,11 @@
                             transform
                         );
                 });
+
+                // increase distance between nodes
+            simulation.force("link").distance(d => 60);
+            //increase radius of collision
+            simulation.force("collision").radius(30);
         }
 
         // Draw the Graph with ARIA Attributes
@@ -955,6 +1120,9 @@
                 .attr("stroke-opacity", 0.9)
                 .attr("stroke-width", 2);
 
+            // console.log("Node Colors:", graphData.nodes.map(d => d.style?.["background-color"]));
+
+
             // Draw nodes as groups
             node = nodeGroup.selectAll("g")
                 .data(graphData.nodes)
@@ -971,9 +1139,13 @@
                     .on("end", dragended));
 
             // Append circles to node groups
+            // node.append("circle")
+            //     .attr("r", 25)
+            //     .attr("fill", d => communityColors[d.community] || "#666");
             node.append("circle")
-                .attr("r", 20)
-                .attr("fill", d => communityColors[d.community] || "#666");
+            .attr("r", 25)
+            .attr("fill", d => d.style?.["communityColor"] || "#666");
+
 
             // Append text backgrounds (rectangles)
             node.each(function(d) {
