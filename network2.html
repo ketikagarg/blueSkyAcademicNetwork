@@ -341,7 +341,7 @@
     .force("link", d3.forceLink().id(d => d.id).distance(60))
     .force("charge", d3.forceManyBody().strength(-30))
     .force("center", d3.forceCenter(width / 2, height / 2))
-    .force("collision", d3.forceCollide().radius(23)) // Keep nodes from overlapping
+    .force("collision", d3.forceCollide().radius(20)) // Keep nodes from overlapping
     .force("clustering", clusteringForce(2)); // Add clustering force
     // Add clustering force
 
@@ -380,8 +380,34 @@
     
 
     // Adjust clustering force strength based on color mode
-    let strength = selectedColorBy === "communityColor" ? 0.5 : 0.5; // Stronger for proportion-based coloring
+   let strength = selectedColorBy === "communityColor" ? 0.5 : 0.5; // Stronger for proportion-based coloring
     let repulsion = selectedColorBy === "communityColor" ? -10 : -10; // Increase repulsion for better separation
+    if (selectedColorBy === "caltechColor") {
+        // Wait for color transition to complete, then bring Caltech nodes to front
+        //debug
+        console.log("Caltech color selected, bringing nodes to front");
+        setTimeout(bringCaltechNodesToFront, 200);
+        // bringCaltechNodesToFront(); // Call the function directly for immediate effect
+    }
+
+    //reset if selectedColorBy is not caltechColor
+    if (selectedColorBy !== "caltechColor") {
+        // // Reset node positions slightly to allow a better reshuffle
+        // graphData.nodes.forEach(node => {
+        //     node.x += (Math.random() - 0.5) * 100; // Random nudge
+        //     node.y += (Math.random() - 0.5) * 100;
+        // });
+
+        // Reset node styles to default
+        resetNodes(selectedColorBy); // Reset all nodes to default styles
+
+        // make all nodes same opacity, size and color
+
+    }
+
+    // Adjust clustering force strength based on color mode
+    // let strength = selectedColorBy === "caltechColor" ? 0.5 : 0.5;
+    // let repulsion = selectedColorBy === "caltechColor" ? -10 : -10;
 
     // simulation.force("clustering", clusteringForce(strength));
     // simulation.force("charge", d3.forceManyBody().strength(repulsion)); // Adjust repulsion
@@ -898,7 +924,7 @@ function updateLegend(colorMode) {
                 .style("display", "inline");
             node.select("text").transition().duration(750)
                 .style("display", "inline")
-                .attr("font-size", "10px"); // Reset font size
+                .attr("font-size", "25px"); // Reset font size
 
             // Reset link distances to default
             // simulation.force("link").distance(d => 30).strength(1);
@@ -910,7 +936,7 @@ function updateLegend(colorMode) {
     .force("link", d3.forceLink().id(d => d.id).distance(60))
     .force("charge", d3.forceManyBody().strength(-30))
     .force("center", d3.forceCenter(width / 2, height / 2))
-    .force("collision", d3.forceCollide().radius(23)) // Keep nodes from overlapping
+    .force("collision", d3.forceCollide().radius(20)) // Keep nodes from overlapping
     .force("clustering", clusteringForce(2)); // Add clustering force
 
 
@@ -962,9 +988,6 @@ function updateLegend(colorMode) {
         function handleMouseOver(event, d) {
             // Highlight the hovered node
             d3.select(this).classed("highlighted", true);
-            
-            //increase collision radius on hover
-            simulation.force("collision").radius(40);
             
             // Highlight the entire community
             node.filter(nodeData => nodeData.community === d.community)

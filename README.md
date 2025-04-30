@@ -6,7 +6,7 @@
 
 <!-- Last updated: # 06 Dec 2024 -->
 
-Last updated: 16 Mar 2025
+Last updated: 29 Apr 2025
 
 This repository stores an interactive network file of the academic starter packs. The data here has been pulled from https://blueskydirectory.com/starter-packs/all and from bluesky's open data, with the help of blueksy developer APIs (https://docs.bsky.app/).
 
