@@ -232,6 +232,9 @@
             <option value="communityColor">Community</option>
             <option value="proportionOfMenColor">Proportion of Men</option>
             <option value="proportionOfWomenColor">Proportion of Women</option>
+            <!-- caltech -->
+            <option value="caltechColor">Caltech</option>
+        
             </select>
 
         
@@ -244,6 +247,10 @@
 
         <!-- //add a button to a link to the github page -->
         <a href=" https://ketikagarg.github.io/blueSkyAcademicNetwork/stats.html"><button><b>NEW: </b>See Gender Stats</button></a>
+
+
+        <!-- Download High-Res Image Button -->
+        <!-- <button id="download-btn" onclick="downloadHighRes()">Download High-Res Image</button> -->
 
     </div>
 
@@ -370,9 +377,7 @@
         function updateNodeColors() {
     const selectedColorBy = document.getElementById('colorBy').value;
 
-    // Update node colors
-    node.select("circle").transition().duration(750)
-        .attr("fill", d => d.style?.[selectedColorBy] || "#666");
+    
 
     // Adjust clustering force strength based on color mode
     let strength = selectedColorBy === "communityColor" ? 0.5 : 0.5; // Stronger for proportion-based coloring
@@ -402,6 +407,102 @@
     updateLegend(selectedColorBy);
 }
 
+// Add this function to bring Caltech nodes to the front
+function bringCaltechNodesToFront() {
+    console.log("Bringing Caltech nodes to front");
+    
+    // Find all nodes that are Caltech nodes (have a non-gray caltechColor)
+    const caltechNodes = graphData.nodes.filter(d => 
+        d.style.caltechColor !== "#cccccc");
+    
+    if (caltechNodes.length === 0) {
+        console.warn("No Caltech nodes found.");
+        return;
+    }
+    
+    console.log(`Found ${caltechNodes.length} Caltech nodes`);
+    
+    // Bring Caltech nodes to front by re-appending them to their parent
+    node.filter(d =>  d.style.caltechColor !== "#cccccc")
+        .each(function() {
+            // Bring to front by moving to end of selection
+            this.parentNode.appendChild(this);
+        });
+    
+    // Also apply visual highlighting to make them stand out
+    node.filter(d =>  d.style.caltechColor !== "#cccccc")
+        .select("circle")
+        .transition().duration(100)
+        .attr("stroke", "darkorange")
+        .attr("stroke-width", 1.5)
+        //change color to caltechColor
+        .attr("fill", d => d.style.caltechColor)
+        //increase space between nodes
+        .attr("repulsion", -100)
+        // .attr("r", 35) // Make them slightly larger
+
+
+        // node.filter(d =>  d.style.caltechColor !== "#cccccc")
+        
+        //change text size of node.label
+        .select("text")
+        .transition().duration(100)
+        .attr("font-size", "15px");
+
+
+
+    //remove nodes and links that are not caltech nodes
+    node.filter(d => d.style.caltechColor === "#cccccc")
+        .select("circle")
+        // .transition().duration(750)
+        .attr("opacity", 0.3) // Fade out non-Caltech nodes
+        .attr("fill", d => d.style.caltechColor)
+        .select("text")
+        .transition().duration(100)
+        .attr("font-size", "8px")
+        .attr("opacity", 0.3) // Fade out non-Caltech labels
+        .attr("color", "#666"); // Change color to gray
+    
+    // Highlight any links connected to Caltech nodes with a different style
+    // link.filter(d => 
+    //     (d.source.style.caltechColor !== "#cccccc") || 
+    //     (d.target.style.caltechColor !== "#cccccc"))
+    //     .transition().duration(750)
+    //     .attr("stroke", "orange")
+    //     .attr("stroke-width", 5.5);
+}
+
+// Add this HTML to your controls section
+// <button id="download-btn" onclick="downloadHighRes()">Download High-Res Image</button>
+
+//function to reset nodes after bringCaltechNodesToFront
+function resetNodes(selectedColorBy) {
+    node.transition().duration(750)
+        .attr("opacity", 1) // Reset opacity for all nodes
+        .select("circle")
+        .attr("stroke", "#666") // Reset stroke color
+        .attr("stroke-width", 1.5) // Reset stroke width
+        .attr("r", 25); // Reset radius
+
+        // Update node colors
+    node.select("circle").transition().duration(750)
+        .attr("fill", d => d.style?.[selectedColorBy] || "#666")
+        .attr("r", 25) // Reset radius
+        .attr("opacity", 1) // Reset opacity
+        .attr("stroke", "#666") // Reset stroke color
+        .attr("stroke-width", 0); // Reset stroke width
+
+
+    node.select("text")
+        .transition().duration(100)
+        .attr("font-size", "10px"); // Reset font size
+
+    // Reset links to default style
+    link.transition().duration(750)
+        .attr("stroke", "#666") // Reset link color
+        .attr("stroke-width", 1.5); // Reset link width
+}
+
 
 
 function updateLegend(colorMode) {
@@ -426,7 +527,29 @@ function updateLegend(colorMode) {
                 .text(`${entry.community}: ${entry.description}`);
         });
 
-    } else {
+    } 
+
+    else if (colorMode === "caltechColor") {
+        // Caltech-based legend
+        let caltechLegend = legendContainer.append("div")
+            .style("display", "flex")
+            .style("align-items", "center")
+            .style("margin-bottom", "10px");
+
+        caltechLegend.append("div")
+            .style("width", "20px")
+            .style("height", "20px")
+            .style("background-color", "#ff4500") // Caltech color
+            .style("margin-right", "10px");
+
+        caltechLegend.append("div")
+            .text(
+                `Nodes with members with Caltech/JPL affiliation`)
+            // `Caltech: ${graphData.nodes.filter(d => d.style.caltechColor !== "#cccccc").length} nodes`);
+
+    }
+    
+    else {
         // Proportion-based legend (Gradient)
         let gradientColor = colorMode === "proportionOfMenColor" ? ["#ffd700", "#ff4500"] : ["#00ffff", "#ff00ff"]; // Autumn for men, Cool for women
         let labelText = colorMode === "proportionOfMenColor" ? "Proportion of Men" : "Proportion of Women";
@@ -839,7 +962,7 @@ function updateLegend(colorMode) {
         function handleMouseOver(event, d) {
             // Highlight the hovered node
             d3.select(this).classed("highlighted", true);
-
+            
             //increase collision radius on hover
             simulation.force("collision").radius(40);
             
@@ -891,7 +1014,7 @@ function updateLegend(colorMode) {
         // Display Node Details
         function displayNodeDetails(nodeData) {
             const details = `
-                <div><strong>Label:</strong> ${nodeData.label}</div>
+                <div><strong>Label:</strong> ${nodeData.actual_label}</div>
                 <div><strong>Description:</strong> ${nodeData.description}</div>
                 <div><strong>Community:</strong> ${nodeData.community}</div>
                 <div><strong>Total Members:</strong> ${nodeData.totalMembers}</div>        
@@ -908,7 +1031,7 @@ function updateLegend(colorMode) {
         function initializeTooltips() {
             node.each(function(d) {
                 tippy(this, {
-                    content: `<strong>${d.label}</strong><br>${d.description}`,
+                    content: `<strong>${d.actual_label}</strong><br>${d.description}`,
                     allowHTML: true,
                     interactive: true,
                     trigger: 'mouseenter',
@@ -927,7 +1050,7 @@ function updateLegend(colorMode) {
             if (query === "") return; // No action for empty search
 
             // Find all matching nodes
-            searchResults = graphData.nodes.filter(d => d.label.toLowerCase().includes(query));
+            searchResults = graphData.nodes.filter(d => d.actual_label.toLowerCase().includes(query));
             if (searchResults.length === 0) {
                 alert("No matching nodes found.");
                 return;
