@@ -6,7 +6,9 @@
 
 <!-- Last updated: # 06 Dec 2024 -->
 
-Last updated: 29 Apr 2025
+Data last updated: 29 Apr 2025
+
+Visuals last updated: 19 Dec 2025
 
 This repository stores an interactive network file of the academic starter packs. The data here has been pulled from https://blueskydirectory.com/starter-packs/all and from bluesky's open data, with the help of blueksy developer APIs (https://docs.bsky.app/).
 
@@ -15,6 +17,8 @@ Each node is an academic starter pack. Connections (or edges) between any two gi
 Gender detection: To classify, I use the pronouns used by members, and if none are present, I use Gender API in Python.
 
 [Network Viz](https://ketikagarg.github.io/blueSkyAcademicNetwork/network2.html)
+
+Another way to visualize is to bundle the nodes and edges in a community and represent each community as a node. The network is easier to navigate in this higher-level visualization. As a proxy for what type of community a node represents, I use the most central starter pack in that community as a label. [Higher-level Network Viz](https://ketikagarg.github.io/blueSkyAcademicNetwork/d3Network_bundled.html)
 
 These do not cover all the academic starter packs in the interest of easier data handling. Main filter applied was the presence of at least 4 members between packs to register an edge between them (to remove spurious connections). There are currently ~1300 packs included.
 
