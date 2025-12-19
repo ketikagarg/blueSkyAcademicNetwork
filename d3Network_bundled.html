@@ -246,10 +246,9 @@
         </select>
 
         <!-- //add a button to a link to the github page -->
-        <a href=" https://ketikagarg.github.io/blueSkyAcademicNetwork/stats.html"><button><b></b>See Gender Stats</button></a>
+        <a href=" https://ketikagarg.github.io/blueSkyAcademicNetwork/stats.html"><button><b>NEW: </b>See Gender Stats</button></a>
 
-        <!-- Add a button to go to the d3network_bundled.html page -->
-        <a href="d3Network_bundled.html"><button><b>NEW: </b>View Community-level Network (zoomed out)</button></a>
+
         <!-- Download High-Res Image Button -->
         <!-- <button id="download-btn" onclick="downloadHighRes()">Download High-Res Image</button> -->
 
@@ -279,8 +278,8 @@
                     <li><b>Search:</b> Enter a term in the search box to highlight matching nodes. Toggle between the searched nodes with Prev Results and Next Result</li>
                     <li><b>Reset:</b> Click "Reset" to clear highlights and return to the initial view.</li>
                     <li><b>Node Interaction:</b> Click or hover a node to view its details. Drag them around to re-adjust</li>
-                    <li><b>Legend:</b> Communities and their associated topics (not perfect!).</li>
-                    <li><b>Community Navigation:</b> Select a community to focus on the subgraph. Or click on the legend!</li>
+                    <!-- <li><b>Legend:</b> Communities and their associated topics (not perfect!).</li> -->
+                    <!-- <li><b>Community Navigation:</b> Select a community to focus on the subgraph. Or click on the legend!</li> -->
                     <li><b>Color By:</b> Choose between Community or Proportion of Men or Women.</li>
                     <li> For more info: <a href="https://ketikagarg.github.io/blueSkyAcademicNetwork/">README</a></li>
                 </ul>
@@ -289,11 +288,11 @@
             <!-- Community Panel (Removed as per instructions) -->
         </div>
         
-        <!-- Legend -->
+        <!-- Legend
         <div id="legend">
             <h4>Legend</h4>
-            <!-- Legend content will be populated dynamically -->
-        </div>
+            
+        </div> -->
     </div>
 
     <!-- JavaScript Section -->
@@ -338,12 +337,20 @@
             //     .force("charge", d3.forceManyBody().strength(-20))
             //     .force("center", d3.forceCenter(width / 2, height / 2))
             //     .force("collision", d3.forceCollide().radius(30)); // Increased collision radius for larger nodes
+            // simulation = d3.forceSimulation()
+            //     .force("link", d3.forceLink().id(d => d.id).distance(60))
+            //     .force("charge", d3.forceManyBody().strength(-30))
+            //     .force("center", d3.forceCenter(width / 2, height / 2))
+            //     .force("collision", d3.forceCollide().radius(20)) // Keep nodes from overlapping
+            //     .force("clustering", clusteringForce(2)); // Add clustering force
             simulation = d3.forceSimulation()
-    .force("link", d3.forceLink().id(d => d.id).distance(60))
-    .force("charge", d3.forceManyBody().strength(-30))
-    .force("center", d3.forceCenter(width / 2, height / 2))
-    .force("collision", d3.forceCollide().radius(20)) // Keep nodes from overlapping
-    .force("clustering", clusteringForce(2)); // Add clustering force
+                .force("link", d3.forceLink().id(d => d.id)
+                    .distance(d => 60) // More weight = shorter distance
+                )
+                .force("charge", d3.forceManyBody().strength(-500)) // Stronger repulsion
+                .force("center", d3.forceCenter(width / 2, height / 2))
+                .force("collision", d3.forceCollide().radius(d => 10 + 2 * (d.data?.packs_count ?? 1))) // Node size based on packs_count
+                .force("clustering", clusteringForce(0.2)); // Add clustering force
     // Add clustering force
 
             // Initialize resizer
@@ -509,12 +516,22 @@ function resetNodes(selectedColorBy) {
         .select("circle")
         .attr("stroke", "#666") // Reset stroke color
         .attr("stroke-width", 1.5) // Reset stroke width
-        .attr("r", 25); // Reset radius
+        // .attr("r", 25)
+.attr("r", d => {
+    //normalize packs_count to number
+    const count = +d.packs_count || +(d.data?.packs_count) || 1;
+
+  return 10 + 0.5 * count;
+})
 
         // Update node colors
     node.select("circle").transition().duration(750)
         .attr("fill", d => d.style?.[selectedColorBy] || "#666")
-        .attr("r", 25) // Reset radius
+        // .attr("r", 25)
+.attr("r", d => {
+  const count = +d.packs_count || +(d.data?.packs_count) || 1;
+  return 10 + 0.5 * count;
+})
         .attr("opacity", 1) // Reset opacity
         .attr("stroke", "#666") // Reset stroke color
         .attr("stroke-width", 0); // Reset stroke width
@@ -609,6 +626,7 @@ function updateLegend(colorMode) {
             );
             
 
+
     }
 }
 
@@ -661,30 +679,34 @@ function updateLegend(colorMode) {
 
         // Load Data and Initialize Visualization
         Promise.all([
-            fetch('./network_filter4.json').then(res => {
+            // fetch('./network_filter4.json').then(res => {
+            fetch('./community_network_filter4.json').then(res => {
                 if (!res.ok) throw new Error(`Failed to fetch network_data.json: ${res.statusText}`);
                 return res.json();
             }),
-            fetch('./legend_filter4.json').then(res => {
-                if (!res.ok) throw new Error(`Failed to fetch legend_data.json: ${res.statusText}`);
-                return res.json();
-            })
+            // fetch('./community_legend_filter4.json').then(res => {
+            //     if (!res.ok) throw new Error(`Failed to fetch legend_data.json: ${res.statusText}`);
+            //     return res.json();
+            // })
         ]).then(([network, legend]) => {
             graphData = network;
-            legendData = legend;
-            updateLegend("communityColor"); // Default to community legend
+            // legendData = legend;
+            // updateLegend("communityColor"); // Default to community legend
 
 
-            console.log("Network Data:", graphData); // Debugging
-            console.log("Legend Data:", legendData); // Debugging
+            // console.log("Network Data:", graphData); // Debugging
+            // console.log("Legend Data:", legendData); // Debugging
 
             // Transform nodes and edges to extract 'data' properties
             // graphData.nodes = graphData.nodes.map(node => node.data);
             // //add style to nodes
             graphData.nodes = graphData.nodes.map(node => ({
-        ...node.data,  // Keep original node data
-        style: node.style || {} // Preserve style without modification
-    }));
+                ...node.data,  // Keep original node data
+                style: node.style || {} // Preserve style without modification
+            }));
+
+            // Debug: Log all node data to check packs_count
+            console.log("All node data after mapping:", graphData.nodes);
 
             graphData.edges = graphData.edges.map(edge => edge.data);
 
@@ -760,7 +782,7 @@ function updateLegend(colorMode) {
 
             // Initialize visualization components
             initializeSVG();
-            populateLegend();
+            // populateLegend();
             defineCommunityCenters(); // Ensure this is called before populating the dropdown
             populateCommunityDropdown(); // Now called after defining community centers
             drawGraphWithARIA(); // Ensure ARIA attributes are added
@@ -920,7 +942,12 @@ function updateLegend(colorMode) {
             node.transition().duration(750)
                 .style("display", "inline")
                 .select("circle")
-                .attr("r", 25); // Reset node size
+                // .attr("r", 25)
+.attr("r", d => {
+  const count = +d.packs_count || +(d.data?.packs_count) || 1;
+  console.log("packs_count (as number)", count, d);
+  return 10 + 2 * count;
+})
             link.transition().duration(750)
                 .style("display", "inline");
             node.select("text").transition().duration(750)
@@ -934,11 +961,13 @@ function updateLegend(colorMode) {
             // simulation.force("collision").radius(25);
 
             simulation = d3.forceSimulation()
-    .force("link", d3.forceLink().id(d => d.id).distance(60))
-    .force("charge", d3.forceManyBody().strength(-30))
+    .force("link", d3.forceLink().id(d => d.id)
+    .distance(d => 60))
+
+    .force("charge", d3.forceManyBody().strength(-500)) // Stronger repulsion
     .force("center", d3.forceCenter(width / 2, height / 2))
-    .force("collision", d3.forceCollide().radius(20)) // Keep nodes from overlapping
-    .force("clustering", clusteringForce(2)); // Add clustering force
+    .force("collision", d3.forceCollide().radius(d => 10 + 2 * (d.data?.packs_count ?? 1))) // Node size based on packs_count
+    .force("clustering", clusteringForce(0.2)); // Add clustering force
 
 
 
@@ -987,64 +1016,126 @@ function updateLegend(colorMode) {
 
         // Handle Mouse Over
         function handleMouseOver(event, d) {
-            // Highlight the hovered node
-            d3.select(this).classed("highlighted", true);
+            // // Highlight the hovered node
+            // d3.select(this).classed("highlighted", true);
             
-            // Highlight the entire community
-            node.filter(nodeData => nodeData.community === d.community)
-                .classed("community-highlighted", true);
+            
 
-            // Highlight all links connected to the community
+            // // Highlight all links connected to the community
+            // link.filter(linkData => 
+            //     linkData.source.community === d.community ||
+            //     linkData.target.community === d.community
+            // )
+            // .classed("highlighted-edge", true)
+            // .attr("stroke-width", 3)
+            // .attr("stroke", "red");
+
+            // // Display node details
+            // displayNodeDetails(d);
+        }
+
+        // Handle Mouse Out
+        function handleMouseOut(event, d) {
+            // // Remove highlight from the hovered node
+            // d3.select(this).classed("highlighted", false);
+            
+  
+
+            // // Remove highlight from links connected to the community
+            // link.filter(linkData => 
+            //     linkData.source.community === d.community ||
+            //     linkData.target.community === d.community
+            // )
+            // .classed("highlighted-edge", false)
+            // .attr("stroke-width", 2)
+            // .attr("stroke", d => d.isIntra ? communityColors[d.source.community] : "#666");
+
+            // // Hide node details
+
+            // // Hide node details
+            // document.getElementById('node-details').innerHTML = "Click or hover over a node to see details.";
+        }
+
+        // Handle Click
+        //if clicked then keep the node details displayed until another node is clicked
+        let clickedNode = null;
+        function handleClick(event, d) {
+            // If another node was previously clicked, deselect it
+            if (clickedNode !== null && clickedNode !== d) {
+            node.filter(n => n === clickedNode)
+                .classed("highlighted", false)
+                .select("circle")
+                .attr("stroke", "#fff")
+                .attr("stroke-width", 1.5);
+
             link.filter(linkData => 
-                linkData.source.community === d.community ||
-                linkData.target.community === d.community
+                linkData.source === clickedNode ||
+                linkData.target === clickedNode
+            )
+            .classed("highlighted-edge", false)
+            .attr("stroke-width", 1.5)
+            .attr("stroke", d => d.isIntra ? communityColors[d.source.community] : "#666");
+            }
+
+            // Display node details on click
+            d3.select(this).classed("highlighted", true);
+
+            // Highlight all links connected to the clicked node
+            link.filter(linkData => 
+            linkData.source === d ||
+            linkData.target === d
             )
             .classed("highlighted-edge", true)
             .attr("stroke-width", 3)
             .attr("stroke", "red");
 
+            //zoom in slightly on clicked node
+            const transform = d3.zoomIdentity
+            .translate(width / 2 - d.x * 2, height / 2 - d.y * 2)
+            .scale(2);
+            svg.transition()
+            .duration(750)
+            .call(
+                zoom.transform,
+                transform
+            );
+
             // Display node details
             displayNodeDetails(d);
+            clickedNode = d;
         }
 
-        // Handle Mouse Out
-        function handleMouseOut(event, d) {
-            // Remove highlight from the hovered node
-            d3.select(this).classed("highlighted", false);
-            
-            // Remove highlight from the entire community
-            node.filter(nodeData => nodeData.community === d.community)
-                .classed("community-highlighted", false);
+        //undo when clicking on background or another node
+        svg.on("click", function(event) {
+            // Check if the click target is the SVG itself (background)
+            if (event.target.tagName === 'svg') {
+            // Reset highlights
+            resetHighlights();
+            clickedNode = null;
+            }
+        });
 
-            // Remove highlight from links connected to the community
-            link.filter(linkData => 
-                linkData.source.community === d.community ||
-                linkData.target.community === d.community
-            )
-            .classed("highlighted-edge", false)
-            .attr("stroke-width", 2)
-            .attr("stroke", d => d.isIntra ? communityColors[d.source.community] : "#666");
+        
 
-            // Hide node details
-            document.getElementById('node-details').innerHTML = "Click or hover over a node to see details.";
-        }
 
-        // Handle Click
-        function handleClick(event, d) {
-            // Display node details on click
-            displayNodeDetails(d);
-        }
 
         // Display Node Details
         function displayNodeDetails(nodeData) {
             const details = `
-                <div><strong>Label:</strong> ${nodeData.actual_label}</div>
-                <div><strong>Description:</strong> ${nodeData.description}</div>
-                <div><strong>Community:</strong> ${nodeData.community}</div>
-                <div><strong>Total Members:</strong> ${nodeData.totalMembers}</div>        
-             <div><strong>Total Members' Gender Identified:</strong> ${nodeData.totalIdentified}</div>
+                <div><strong>Label of Representative Pack:</strong> ${nodeData.label}</div>
+                <div><strong>Description of Representative Pack:</strong> ${nodeData.description}</div>
+                <div><strong>Community Topics:</strong> ${nodeData.community_topic}</div>
+    
+                <div><strong>Total Packs:</strong> ${nodeData.packs_count}</div>
+                <div><strong>Total Members:</strong> ${nodeData.total_members}</div>        
+             <div><strong>Total Members' Gender Identified:</strong> ${nodeData.total_identified}</div>
                 <div><strong>Proportion of Men:</strong> ${nodeData.proportionOfMen}</div>
                 <div><strong>Proportion of Women:</strong> ${nodeData.proportionOfWomen}</div>
+
+                <div><strong>All Packs in this Community:</strong>
+                    <ul>
+                        ${nodeData.member_labels.map(n => `<li>${n}</li>`).join('')}
+                    </ul>
 
                  
             `;
@@ -1097,10 +1188,7 @@ function updateLegend(colorMode) {
         function highlightSearchResult(index) {
             // Remove previous highlights
             node.classed("highlighted", false);
-            link.classed("highlighted-edge", false)
-                .attr("stroke", d => d.isIntra ? communityColors[d.source.community] : "#666")
-                .attr("stroke-width", 2);
-
+            
             const nodeData = searchResults[index];
 
             // Highlight the node
@@ -1208,49 +1296,49 @@ function updateLegend(colorMode) {
         }
 
         // Function to center the view on a specific community
-        function centerOnCommunity(community) {
-            // Get the nodes belonging to the selected community
-            const communityNodes = graphData.nodes.filter(d => d.community === community && d.x != null && d.y != null);
+        // function centerOnCommunity(community) {
+        //     // Get the nodes belonging to the selected community
+        //     const communityNodes = graphData.nodes.filter(d => d.community === community && d.x != null && d.y != null);
 
-            if (communityNodes.length === 0) {
-                console.warn(`No nodes found for community: ${community}`);
-                return;
-            }
+        //     if (communityNodes.length === 0) {
+        //         console.warn(`No nodes found for community: ${community}`);
+        //         return;
+        //     }
 
-            // Compute the centroid of the community nodes
-            const centroid = {
-                x: d3.mean(communityNodes, d => d.x),
-                y: d3.mean(communityNodes, d => d.y)
-            };
+        //     // Compute the centroid of the community nodes
+        //     const centroid = {
+        //         x: d3.mean(communityNodes, d => d.x),
+        //         y: d3.mean(communityNodes, d => d.y)
+        //     };
 
-            const desiredScale = 1.5;
+        //     const desiredScale = 1.5;
 
-            // Reset zoom to identity first
-            svg.transition()
-                .duration(750)
-                .call(
-                    zoom.transform,
-                    d3.zoomIdentity
-                )
-                .on('end', function() {
-                    // After resetting zoom, apply the new transform
-                    const transform = d3.zoomIdentity
-                        .translate(width / 2 - centroid.x * desiredScale, height / 2 - centroid.y * desiredScale)
-                        .scale(desiredScale);
+        //     // Reset zoom to identity first
+        //     svg.transition()
+        //         .duration(750)
+        //         .call(
+        //             zoom.transform,
+        //             d3.zoomIdentity
+        //         )
+        //         .on('end', function() {
+        //             // After resetting zoom, apply the new transform
+        //             const transform = d3.zoomIdentity
+        //                 .translate(width / 2 - centroid.x * desiredScale, height / 2 - centroid.y * desiredScale)
+        //                 .scale(desiredScale);
 
-                    svg.transition()
-                        .duration(750)
-                        .call(
-                            zoom.transform,
-                            transform
-                        );
-                });
+        //             svg.transition()
+        //                 .duration(750)
+        //                 .call(
+        //                     zoom.transform,
+        //                     transform
+        //                 );
+        //         });
 
-                // increase distance between nodes
-            simulation.force("link").distance(d => 60);
-            //increase radius of collision
-            simulation.force("collision").radius(30);
-        }
+        //         // increase distance between nodes
+        //     simulation.force("link").distance(d => 60);
+        //     //increase radius of collision
+        //     simulation.force("collision").radius(30);
+        // }
 
         // Draw the Graph with ARIA Attributes
         function drawGraphWithARIA() {
@@ -1266,9 +1354,9 @@ function updateLegend(colorMode) {
                 .enter()
                 .append("line")
                 .attr("class", d => d.isIntra ? "link intra" : "link inter")
-                .attr("stroke", d => d.isIntra ? communityColors[d.source.community] : "#666")
+                // .attr("stroke", d => d.isIntra ? communityColors[d.source.community] : "#666")
                 .attr("stroke-opacity", 0.9)
-                .attr("stroke-width", 2);
+                .attr("stroke-width", d => 1 + 8 * (d.data?.normalized_weight ?? 0));
 
             // console.log("Node Colors:", graphData.nodes.map(d => d.style?.["background-color"]));
 
@@ -1293,8 +1381,11 @@ function updateLegend(colorMode) {
             //     .attr("r", 25)
             //     .attr("fill", d => communityColors[d.community] || "#666");
             node.append("circle")
-            .attr("r", 25)
-            .attr("fill", d => d.style?.["communityColor"] || "#666");
+                .attr("r", d => {
+  const count = +d.packs_count || +(d.data?.packs_count) || 1;
+  return 10 + 0.5 * count;
+})
+                .attr("fill", d => d.style?.["communityColor"] || "#666");
 
 
             // Append text backgrounds (rectangles)
